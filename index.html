@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Musicala · Evaluación de Equipo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&family=Sacramento&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ============================================================
+       VIEW: LOGIN
+       ============================================================ -->
+  <div id="view-login" class="view active">
+    <div class="login-bg">
+      <div class="login-orb orb-1"></div>
+      <div class="login-orb orb-2"></div>
+      <div class="login-orb orb-3"></div>
+    </div>
+
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="assets/logo.png" alt="Musicala" class="logo-img" />
+      </div>
+
+      <p class="login-sub">Evaluación Administrativa de Equipo</p>
+
+      <div class="login-form login-form-google">
+        <p class="login-copy">
+          Ingresá únicamente con tu cuenta de Google autorizada para acceder al sistema.
+        </p>
+
+        <div id="login-error" class="login-error hidden" role="alert" aria-live="polite">
+          <span class="error-icon">⚠</span>
+          <span id="login-error-msg">No fue posible iniciar sesión.</span>
+        </div>
+
+        <button id="btn-login" class="btn-primary btn-full btn-google" onclick="auth.login()">
+          <span class="btn-text btn-google-content">
+            <span class="google-mark" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#FFC107" d="M43.611 20.083H42V20H24V28H35.303C33.654 32.657 29.222 36 24 36C17.373 36 12 30.627 12 24C12 17.373 17.373 12 24 12C27.059 12 29.842 13.153 31.961 15.039L37.618 9.382C34.047 6.054 29.266 4 24 4C12.955 4 4 12.955 4 24C4 35.045 12.955 44 24 44C35.045 44 44 35.045 44 24C44 22.659 43.862 21.35 43.611 20.083Z"/>
+                <path fill="#FF3D00" d="M6.30695 14.691L12.8799 19.511C14.6579 15.108 18.9619 12 23.9999 12C27.0589 12 29.8419 13.153 31.9609 15.039L37.6179 9.382C34.0469 6.054 29.2659 4 23.9999 4C16.3179 4 9.65695 8.337 6.30695 14.691Z"/>
+                <path fill="#4CAF50" d="M24 44C29.164 44 33.861 42.021 37.409 38.808L31.219 33.57C29.144 35.148 26.607 36 24 36C18.799 36 14.381 32.67 12.717 28.041L6.193 33.067C9.503 39.544 16.227 44 24 44Z"/>
+                <path fill="#1976D2" d="M43.611 20.083H42V20H24V28H35.303C34.511 30.236 33.072 32.166 31.216 33.57L31.219 33.568L37.409 38.806C36.971 39.204 44 34 44 24C44 22.659 43.862 21.35 43.611 20.083Z"/>
+              </svg>
+            </span>
+            <span>Continuar con Google</span>
+          </span>
+          <span class="btn-loader hidden">···</span>
+        </button>
+
+        <p class="login-help" id="login-help">
+          Acceso restringido a administradores autorizados.
+        </p>
+      </div>
+
+      <p class="login-footer">Solo administradores autorizados · Musicala SAS</p>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       APP SHELL (visible cuando hay sesión)
+       ============================================================ -->
+  <div id="app-shell" class="hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <img src="assets/logo.png" alt="Musicala" class="sidebar-logo" />
+        <button id="sidebar-toggle" class="sidebar-toggle" type="button" title="Colapsar menú" aria-label="Colapsar menú">&#9776;</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="dashboard" onclick="event.preventDefault(); app.navigate('dashboard');">
+          <span class="nav-icon">&#9962;</span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-view="empleados" onclick="event.preventDefault(); app.navigate('empleados');">
+          <span class="nav-icon">&#128100;</span>
+          <span class="nav-label">Equipo</span>
+        </a>
+        <a href="#" class="nav-item" data-view="evaluacion" onclick="event.preventDefault(); app.navigate('evaluacion');">
+          <span class="nav-icon">&#11088;</span>
+          <span class="nav-label">Evaluar</span>
+        </a>
+        <a href="#" class="nav-item" data-view="config" onclick="event.preventDefault(); app.navigate('config');">
+          <span class="nav-icon">&#9881;</span>
+          <span class="nav-label">Configuración</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="user-avatar">A</div>
+          <div class="user-details">
+            <span class="user-name" id="user-name">Admin</span>
+            <span class="user-role">Administrador</span>
+          </div>
+        </div>
+        <button class="btn-logout" type="button" onclick="auth.logout()" title="Cerrar sesión" aria-label="Cerrar sesión">&#10148;</button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" class="main-content">
+
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-section" id="topbar-section">Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <div class="period-selector">
+            <select id="select-periodo" class="select-inline" onchange="app.setPeriodo(this.value)">
+              <!-- Opciones generadas por JS -->
+            </select>
+          </div>
+        </div>
+      </header>
+
+      <!-- ── VIEW: DASHBOARD ── -->
+      <section id="view-dashboard" class="app-view active">
+
+        <!-- Resumen rápido -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-blue">&#128100;</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-total">0</span>
+              <span class="stat-label">Miembros activos</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-violet">&#11088;</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-evaluados">0</span>
+              <span class="stat-label">Evaluados este mes</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-green">&#9650;</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-promedio">—</span>
+              <span class="stat-label">Promedio general</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-red">&#9660;</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-bajos">0</span>
+              <span class="stat-label">Bajo rendimiento (&lt;3)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking y alertas -->
+        <div class="dashboard-grid">
+
+          <!-- Ranking de equipo -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Ranking del período</h2>
+              <span class="panel-badge" id="badge-periodo">—</span>
+            </div>
+            <div class="panel-body" id="ranking-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#127925;</span>
+                <p>No hay evaluaciones para este período.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alertas de bajo rendimiento -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Requieren atención</h2>
+              <span class="badge-alert" id="badge-alertas">0</span>
+            </div>
+            <div class="panel-body" id="alertas-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#10003;</span>
+                <p>Todo el equipo está en buen nivel.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ítems más bajos -->
+          <div class="panel panel-wide">
+            <div class="panel-header">
+              <h2 class="panel-title">Ítems con menor puntaje promedio</h2>
+            </div>
+            <div class="panel-body" id="items-bajos-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#128202;</span>
+                <p>Sin datos suficientes aún.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── VIEW: EQUIPO ── -->
+      <section id="view-empleados" class="app-view">
+
+        <div class="view-toolbar">
+          <div class="toolbar-left">
+            <input
+              type="search"
+              id="search-empleados"
+              class="form-input search-input"
+              placeholder="Buscar por nombre..."
+              oninput="ui.filtrarEmpleados(this.value)"
+            />
+            <select id="filter-rol" class="select-inline" onchange="ui.filtrarEmpleados()">
+              <option value="">Todos los roles</option>
+              <!-- Roles generados por JS -->
+            </select>
+            <select id="filter-estado" class="select-inline" onchange="ui.filtrarEmpleados()">
+              <option value="">Activos e inactivos</option>
+              <option value="activo">Solo activos</option>
+              <option value="inactivo">Solo inactivos</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <button class="btn-primary" type="button" onclick="ui.abrirModalEmpleado()">
+              + Agregar miembro
+            </button>
+          </div>
+        </div>
+
+        <div id="empleados-grid" class="empleados-grid">
+          <!-- Tarjetas generadas por JS -->
+          <div class="empty-state full-width">
+            <span class="empty-icon">&#128100;</span>
+            <p>No hay miembros registrados aún.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── VIEW: EVALUACIÓN ── -->
+      <section id="view-evaluacion" class="app-view">
+
+        <div class="eval-layout">
+
+          <!-- Panel izquierdo: selector -->
+          <div class="eval-sidebar">
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">¿A quién evaluar?</h2>
+              </div>
+              <div class="panel-body">
+                <div class="form-group">
+                  <label class="form-label">Período</label>
+                  <select id="eval-periodo" class="form-input">
+                    <!-- Opciones por JS -->
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Miembro del equipo</label>
+                  <select id="eval-empleado" class="form-input" onchange="ui.cargarFormularioEval()">
+                    <option value="">Seleccionar...</option>
+                    <!-- Opciones por JS -->
+                  </select>
+                </div>
+
+                <!-- Info del empleado seleccionado -->
+                <div id="eval-empleado-card" class="empleado-mini-card hidden">
+                  <div class="emp-avatar" id="eval-emp-avatar">?</div>
+                  <div class="emp-info">
+                    <strong id="eval-emp-nombre">—</strong>
+                    <span id="eval-emp-rol" class="rol-badge">—</span>
+                  </div>
+                </div>
+
+                <!-- Estado de evaluación -->
+                <div id="eval-estado" class="eval-estado hidden">
+                  <span id="eval-estado-icon">&#11088;</span>
+                  <span id="eval-estado-texto">Sin evaluar</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel derecho: formulario -->
+          <div class="eval-main">
+            <div id="eval-placeholder" class="eval-placeholder">
+              <span class="placeholder-icon">&#11088;</span>
+              <p>Seleccioná un miembro del equipo para comenzar la evaluación.</p>
+            </div>
+
+            <div id="eval-form-container" class="hidden">
+              <div class="panel">
+                <div class="panel-header">
+                  <h2 class="panel-title" id="eval-form-titulo">Evaluación</h2>
+                  <span class="panel-badge" id="eval-form-periodo">—</span>
+                </div>
+                <div class="panel-body">
+
+                  <!-- Ítems de calificación generados por JS -->
+                  <div id="eval-items-container">
+                    <!-- Generados por JS -->
+                  </div>
+
+                  <!-- Observaciones -->
+                  <div class="form-group obs-group">
+                    <label class="form-label">
+                      <span class="label-icon">&#128221;</span>
+                      Observaciones generales
+                    </label>
+                    <textarea
+                      id="eval-observaciones"
+                      class="form-input form-textarea"
+                      rows="4"
+                      placeholder="Notas relevantes sobre el desempeño de este período..."
+                    ></textarea>
+                  </div>
+
+                  <!-- Promedio en tiempo real -->
+                  <div class="eval-resumen">
+                    <div class="resumen-promedio">
+                      <span class="prom-label">Promedio</span>
+                      <span class="prom-valor" id="eval-promedio-live">—</span>
+                      <div class="prom-stars" id="eval-prom-stars">
+                        <span class="star sm">★</span>
+                        <span class="star sm">★</span>
+                        <span class="star sm">★</span>
+                        <span class="star sm">★</span>
+                        <span class="star sm">★</span>
+                      </div>
+                    </div>
+                    <button
+                      id="btn-guardar-eval"
+                      class="btn-primary btn-guardar"
+                      type="button"
+                      onclick="db.guardarEvaluacion()"
+                    >
+                      Guardar evaluación
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── VIEW: CONFIGURACIÓN ── -->
+      <section id="view-config" class="app-view">
+
+        <div class="config-grid">
+
+          <!-- Ítems de calificación por rol -->
+          <div class="panel panel-config">
+            <div class="panel-header">
+              <h2 class="panel-title">Ítems de calificación</h2>
+              <button class="btn-secondary" type="button" onclick="ui.abrirModalItem()">
+                + Nuevo ítem
+              </button>
+            </div>
+
+            <!-- Filtro por rol -->
+            <div class="config-filter">
+              <button class="chip chip-active" type="button" data-rol="todos" onclick="ui.filtrarItemsPorRol('todos')">Todos</button>
+              <button class="chip" type="button" data-rol="Universal" onclick="ui.filtrarItemsPorRol('Universal')">Universal</button>
+              <button class="chip" type="button" data-rol="Docente" onclick="ui.filtrarItemsPorRol('Docente')">Docentes</button>
+              <button class="chip" type="button" data-rol="Asesor Comercial" onclick="ui.filtrarItemsPorRol('Asesor Comercial')">Asesores</button>
+              <button class="chip" type="button" data-rol="Administrativo" onclick="ui.filtrarItemsPorRol('Administrativo')">Administrativos</button>
+              <button class="chip" type="button" data-rol="Servicios Generales" onclick="ui.filtrarItemsPorRol('Servicios Generales')">Servicios</button>
+              <button class="chip" type="button" data-rol="Contabilidad" onclick="ui.filtrarItemsPorRol('Contabilidad')">Contabilidad</button>
+              <button class="chip" type="button" data-rol="Diseño" onclick="ui.filtrarItemsPorRol('Diseño')">Diseño</button>
+            </div>
+
+            <div class="panel-body">
+              <div id="items-config-list" class="items-list">
+                <!-- Ítems generados por JS -->
+                <div class="empty-state">
+                  <span class="empty-icon">&#9881;</span>
+                  <p>No hay ítems configurados.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gestión de roles -->
+          <div class="panel panel-config-sm">
+            <div class="panel-header">
+              <h2 class="panel-title">Roles del equipo</h2>
+            </div>
+            <div class="panel-body">
+              <div id="roles-list" class="roles-list">
+                <!-- Lista de roles con conteo -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================
+       MODAL: AGREGAR / EDITAR MIEMBRO
+       ============================================================ -->
+  <div id="modal-empleado" class="modal-overlay hidden" onclick="ui.cerrarModal('modal-empleado')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-empleado-titulo">Agregar miembro</h3>
+        <button class="modal-close" type="button" onclick="ui.cerrarModal('modal-empleado')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="empleado-id" />
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre completo *</label>
+            <input type="text" id="emp-nombre" class="form-input" placeholder="Nombre Apellido" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rol / Cargo *</label>
+            <select id="emp-rol" class="form-input">
+              <option value="">Seleccionar rol...</option>
+              <option value="Docente">Docente</option>
+              <option value="Asesor Comercial">Asesor Comercial</option>
+              <option value="Administrativo">Administrativo</option>
+              <option value="Servicios Generales">Servicios Generales</option>
+              <option value="Contabilidad">Contabilidad</option>
+              <option value="Diseño">Diseño</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Correo</label>
+            <input type="email" id="emp-email" class="form-input" placeholder="correo@ejemplo.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" id="emp-telefono" class="form-input" placeholder="300 000 0000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <div class="toggle-group">
+            <label class="toggle">
+              <input type="checkbox" id="emp-activo" checked />
+              <span class="toggle-track"></span>
+            </label>
+            <span class="toggle-label" id="emp-activo-label">Activo</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas internas</label>
+          <textarea id="emp-notas" class="form-input form-textarea" rows="2" placeholder="Información relevante sobre el miembro..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" type="button" onclick="ui.cerrarModal('modal-empleado')">Cancelar</button>
+        <button class="btn-primary" type="button" onclick="db.guardarEmpleado()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: AGREGAR / EDITAR ÍTEM DE CALIFICACIÓN
+       ============================================================ -->
+  <div id="modal-item" class="modal-overlay hidden" onclick="ui.cerrarModal('modal-item')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-item-titulo">Nuevo ítem de calificación</h3>
+        <button class="modal-close" type="button" onclick="ui.cerrarModal('modal-item')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="item-id" />
+
+        <div class="form-group">
+          <label class="form-label">Nombre del ítem *</label>
+          <input type="text" id="item-nombre" class="form-input" placeholder="Ej: Puntualidad" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" id="item-descripcion" class="form-input" placeholder="Ej: Llega a tiempo a sus compromisos laborales." />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Aplica a *</label>
+            <select id="item-rol" class="form-input">
+              <option value="Universal">Universal (todos los roles)</option>
+              <option value="Docente">Docente</option>
+              <option value="Asesor Comercial">Asesor Comercial</option>
+              <option value="Administrativo">Administrativo</option>
+              <option value="Servicios Generales">Servicios Generales</option>
+              <option value="Contabilidad">Contabilidad</option>
+              <option value="Diseño">Diseño</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <div class="toggle-group">
+              <label class="toggle">
+                <input type="checkbox" id="item-activo" checked />
+                <span class="toggle-track"></span>
+              </label>
+              <span class="toggle-label" id="item-activo-label">Activo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" type="button" onclick="ui.cerrarModal('modal-item')">Cancelar</button>
+        <button class="btn-primary" type="button" onclick="db.guardarItem()">Guardar ítem</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       MODAL: VER HISTORIAL DE UN EMPLEADO
+       ============================================================ -->
+  <div id="modal-historial" class="modal-overlay hidden" onclick="ui.cerrarModal('modal-historial')">
+    <div class="modal modal-wide" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 class="modal-title" id="historial-titulo">Historial de evaluaciones</h3>
+        <button class="modal-close" type="button" onclick="ui.cerrarModal('modal-historial')" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Encabezado del empleado -->
+        <div class="historial-emp-header">
+          <div class="emp-avatar lg" id="historial-avatar">?</div>
+          <div>
+            <h4 id="historial-nombre">—</h4>
+            <span id="historial-rol" class="rol-badge">—</span>
+          </div>
+          <div class="historial-promedio-global">
+            <span class="prom-label">Promedio histórico</span>
+            <span class="prom-valor xl" id="historial-prom-global">—</span>
+          </div>
+        </div>
+
+        <!-- Tabla de evaluaciones por período -->
+        <div class="historial-table-wrap">
+          <table class="historial-table" id="historial-table">
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th>Promedio</th>
+                <th>Ítems evaluados</th>
+                <th>Observaciones</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="historial-tbody">
+              <!-- Filas por JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" type="button" onclick="ui.cerrarModal('modal-historial')">Cerrar</button>
+        <button class="btn-primary" type="button" onclick="app.navigate('evaluacion')">Nueva evaluación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOAST NOTIFICATION
+       ============================================================ -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite">
+    <span id="toast-icon">✓</span>
+    <span id="toast-msg">Guardado correctamente.</span>
+  </div>
+
+  <!-- ============================================================
+       SCRIPTS
+       ============================================================ -->
+  <script type="module">
+    const showBootstrapError = (message) => {
+      const loginView = document.getElementById('view-login');
+      const appShell = document.getElementById('app-shell');
+      const errorBox = document.getElementById('login-error');
+      const errorMsg = document.getElementById('login-error-msg');
+      const loginButton = document.getElementById('btn-login');
+
+      if (loginView) loginView.classList.add('active');
+      if (appShell) appShell.classList.add('hidden');
+
+      if (errorBox && errorMsg) {
+        errorMsg.textContent = message || 'No fue posible iniciar la aplicación.';
+        errorBox.classList.remove('hidden');
+      }
+
+      if (loginButton) {
+        loginButton.disabled = true;
+        loginButton.setAttribute('aria-disabled', 'true');
+      }
+    };
+
+    try {
+      const firebaseModule = await import('./js/firebase-config.js');
+      const authModule = (await import('./js/auth.js')).default;
+      const dbModule = (await import('./js/db.js')).default;
+      const uiModule = (await import('./js/ui.js')).default;
+      const appModule = (await import('./js/app.js')).default;
+
+      const firebaseExports = firebaseModule.default ?? firebaseModule;
+
+      const firebaseApp = firebaseExports.firebaseApp ?? firebaseModule.firebaseApp ?? null;
+      const firebaseAuth = firebaseExports.auth ?? firebaseModule.auth ?? null;
+      const firebaseDb = firebaseExports.db ?? firebaseModule.db ?? null;
+      const authReady = firebaseExports.authReady ?? firebaseModule.authReady ?? Promise.resolve();
+
+      if (!firebaseApp || !firebaseAuth || !firebaseDb) {
+        throw new Error('Firebase no se inicializó correctamente. Revisá js/firebase-config.js.');
+      }
+
+      window._firebaseApp = firebaseApp;
+      window._firebaseAuth = firebaseAuth;
+      window._firebaseDb = firebaseDb;
+      window._firebaseAuthReady = authReady;
+
+      window.auth = authModule;
+      window.db = dbModule;
+      window.ui = uiModule;
+      window.app = appModule;
+
+      if (typeof authModule.init === 'function') {
+        authModule.init();
+      }
+
+      if (typeof appModule.init === 'function') {
+        await appModule.init();
+      }
+    } catch (error) {
+      console.error('[BOOTSTRAP_ERROR]', error);
+      showBootstrapError(
+        'La aplicación no pudo iniciar. Revisá la configuración de Firebase, los imports del proyecto y los dominios autorizados.'
+      );
+    }
+  </script>
+
+</body>
+</html>
