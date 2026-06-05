@@ -30,7 +30,7 @@
 
       <div class="login-form login-form-google">
         <p class="login-copy">
-          Ingresá únicamente con tu cuenta de Google autorizada para acceder al sistema.
+          Ingresa únicamente con tu cuenta de Google autorizada para acceder al sistema.
         </p>
 
         <div id="login-error" class="login-error hidden" role="alert" aria-live="polite">
@@ -125,42 +125,76 @@
       <!-- ── VIEW: DASHBOARD ── -->
       <section id="view-dashboard" class="app-view active">
 
+        <div class="dashboard-hero">
+          <div>
+            <p class="eyebrow">Control administrativo</p>
+            <h1>Dashboard de desempeño</h1>
+            <p class="hero-copy">Vista rápida del período, acumulado histórico y puntos de atención para guiar seguimientos sin improvisar en modo incendio institucional.</p>
+          </div>
+          <div class="hero-pill" id="hero-periodo">—</div>
+        </div>
+
         <!-- Resumen rápido -->
-        <div class="stats-grid">
-          <div class="stat-card">
+        <div class="stats-grid glow-grid">
+          <div class="stat-card stat-card-glow">
             <div class="stat-icon stat-blue">&#128100;</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-total">0</span>
               <span class="stat-label">Miembros activos</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card stat-card-glow">
             <div class="stat-icon stat-violet">&#11088;</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-evaluados">0</span>
-              <span class="stat-label">Evaluados este mes</span>
+              <span class="stat-label">Evaluados este período</span>
             </div>
           </div>
-          <div class="stat-card">
+          <div class="stat-card stat-card-glow">
+            <div class="stat-icon stat-green">%</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-cobertura">0%</span>
+              <span class="stat-label">Cobertura del período</span>
+            </div>
+          </div>
+          <div class="stat-card stat-card-glow">
             <div class="stat-icon stat-green">&#9650;</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-promedio">—</span>
               <span class="stat-label">Promedio general</span>
             </div>
           </div>
-          <div class="stat-card">
-            <div class="stat-icon stat-red">&#9660;</div>
+          <div class="stat-card stat-card-glow">
+            <div class="stat-icon stat-red">&#9888;</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-bajos">0</span>
-              <span class="stat-label">Bajo rendimiento (&lt;3)</span>
+              <span class="stat-label">Alertas &lt; 3.0</span>
+            </div>
+          </div>
+          <div class="stat-card stat-card-glow">
+            <div class="stat-icon stat-violet">&#128202;</div>
+            <div class="stat-body">
+              <span class="stat-value" id="stat-historicas">0</span>
+              <span class="stat-label">Evaluaciones históricas</span>
             </div>
           </div>
         </div>
 
-        <!-- Ranking y alertas -->
-        <div class="dashboard-grid">
+        <div class="dashboard-grid dashboard-grid-glow">
 
-          <!-- Ranking de equipo -->
+          <div class="panel panel-feature">
+            <div class="panel-header">
+              <h2 class="panel-title">Acumulado total por miembro</h2>
+              <span class="panel-badge" id="badge-acumulado">Histórico</span>
+            </div>
+            <div class="panel-body" id="acumulado-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#128202;</span>
+                <p>No hay histórico suficiente todavía.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="panel">
             <div class="panel-header">
               <h2 class="panel-title">Ranking del período</h2>
@@ -174,7 +208,19 @@
             </div>
           </div>
 
-          <!-- Alertas de bajo rendimiento -->
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Pendientes del período</h2>
+              <span class="badge-alert" id="badge-pendientes">0</span>
+            </div>
+            <div class="panel-body" id="pendientes-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#10003;</span>
+                <p>Todo el equipo activo ya fue evaluado.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="panel">
             <div class="panel-header">
               <h2 class="panel-title">Requieren atención</h2>
@@ -188,10 +234,23 @@
             </div>
           </div>
 
-          <!-- Ítems más bajos -->
+          <div class="panel panel-wide">
+            <div class="panel-header">
+              <h2 class="panel-title">Tendencia mensual del equipo</h2>
+              <span class="panel-badge">Últimos períodos</span>
+            </div>
+            <div class="panel-body" id="tendencia-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#128200;</span>
+                <p>Cuando haya varios períodos evaluados, aquí aparece la evolución.</p>
+              </div>
+            </div>
+          </div>
+
           <div class="panel panel-wide">
             <div class="panel-header">
               <h2 class="panel-title">Ítems con menor puntaje promedio</h2>
+              <span class="panel-badge">Diagnóstico</span>
             </div>
             <div class="panel-body" id="items-bajos-list">
               <div class="empty-state">
@@ -290,7 +349,7 @@
           <div class="eval-main">
             <div id="eval-placeholder" class="eval-placeholder">
               <span class="placeholder-icon">&#11088;</span>
-              <p>Seleccioná un miembro del equipo para comenzar la evaluación.</p>
+              <p>Selecciona un miembro del equipo para comenzar la evaluación.</p>
             </div>
 
             <div id="eval-form-container" class="hidden">
@@ -549,6 +608,25 @@
           </div>
         </div>
 
+        <div class="historial-kpis">
+          <div class="mini-kpi">
+            <span>Evaluaciones</span>
+            <strong id="historial-evals">0</strong>
+          </div>
+          <div class="mini-kpi">
+            <span>Puntos acumulados</span>
+            <strong id="historial-puntos">0</strong>
+          </div>
+          <div class="mini-kpi">
+            <span>Mejor período</span>
+            <strong id="historial-mejor">—</strong>
+          </div>
+          <div class="mini-kpi">
+            <span>Tendencia</span>
+            <strong id="historial-tendencia">—</strong>
+          </div>
+        </div>
+
         <!-- Tabla de evaluaciones por período -->
         <div class="historial-table-wrap">
           <table class="historial-table" id="historial-table">
@@ -556,6 +634,7 @@
               <tr>
                 <th>Período</th>
                 <th>Promedio</th>
+                <th>Puntos</th>
                 <th>Ítems evaluados</th>
                 <th>Observaciones</th>
                 <th></th>
@@ -566,6 +645,8 @@
             </tbody>
           </table>
         </div>
+
+        <div class="historial-items" id="historial-items-resumen"></div>
 
       </div>
       <div class="modal-footer">
