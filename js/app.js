@@ -14,11 +14,13 @@ const app = (() => {
     empleados: [],
     items: [],
     evaluaciones: {},
+    evaluacionesHistoricas: [],
     authUser: null,
     unsubscribers: {
       empleados: null,
       items: null,
       evaluaciones: null,
+      evaluacionesHistoricas: null,
       auth: null,
     },
     uiReady: false,
@@ -188,6 +190,10 @@ const app = (() => {
         _safeCall(_getUi()?.renderDashboard);
       }
 
+      if (state.currentView === 'empleados') {
+        _safeCall(_getUi()?.renderEmpleados);
+      }
+
       if (state.currentView === 'evaluacion') {
         _safeCall(_getUi()?.actualizarEstadoEval);
         _safeCall(_getUi()?.cargarFormularioEval);
@@ -340,6 +346,20 @@ const app = (() => {
       });
     }
 
+    if (typeof db.escucharTodasEvaluaciones === 'function') {
+      state.unsubscribers.evaluacionesHistoricas = db.escucharTodasEvaluaciones((evaluaciones) => {
+        state.evaluacionesHistoricas = Array.isArray(evaluaciones) ? evaluaciones : [];
+
+        if (state.currentView === 'dashboard') {
+          _safeCall(ui?.renderDashboard);
+        }
+
+        if (state.currentView === 'empleados') {
+          _safeCall(ui?.renderEmpleados);
+        }
+      });
+    }
+
     resuscribirEvaluaciones(state.periodoActivo);
   }
 
@@ -360,6 +380,10 @@ const app = (() => {
     return state.evaluaciones;
   }
 
+  function getEvaluacionesHistoricas() {
+    return state.evaluacionesHistoricas;
+  }
+
   function getPeriodoActivo() {
     return state.periodoActivo;
   }
@@ -378,26 +402,101 @@ const app = (() => {
   }
 
   // ── Dashboard / métricas ─────────────────────────────────
-  function calcularEstadisticas(periodo) {
-    const empleadosActivos = state.empleados.filter((e) => e && e.activo !== false);
-    const evals = Object.values(state.evaluaciones).filter((ev) => ev && ev.periodo === periodo);
+  function _toNumber(valor) {
+    const n = Number(valor);
+    return Number.isFinite(n) ? n : null;
+  }
 
-    let promedioGeneral = null;
+  function _round1(valor) {
+    const n = _toNumber(valor);
+    return n == null ? null : Number(n.toFixed(1));
+  }
 
-    if (evals.length > 0) {
-      const suma = evals.reduce((acc, ev) => acc + (Number(ev.promedio) || 0), 0);
-      promedioGeneral = (suma / evals.length).toFixed(1);
+  function _sumarValoresCalificacion(ev) {
+    const valores = Object.values(ev?.calificaciones || {})
+      .map(_toNumber)
+      .filter((v) => v != null);
+
+    if (valores.length) {
+      return valores.reduce((acc, v) => acc + v, 0);
     }
 
-    const bajos = evals.filter((ev) => (Number(ev.promedio) || 0) < 3);
+    const promedio = _toNumber(ev?.promedio);
+    const totalItems = _toNumber(ev?.totalItems);
+    if (promedio != null && totalItems != null) return promedio * totalItems;
+    if (promedio != null) return promedio;
+    return 0;
+  }
 
-    const ranking = evals
+  function _itemsEvaluados(ev) {
+    const porObjeto = Object.keys(ev?.calificaciones || {}).length;
+    if (porObjeto) return porObjeto;
+    return _toNumber(ev?.totalItems) || 0;
+  }
+
+  function _periodoSortAsc(a, b) {
+    return String(a || '').localeCompare(String(b || ''));
+  }
+
+  function _calcularTendencia(evalsEmpleado) {
+    const ordenadas = [...evalsEmpleado]
+      .filter((ev) => ev?.periodo && _toNumber(ev.promedio) != null)
+      .sort((a, b) => _periodoSortAsc(a.periodo, b.periodo));
+
+    if (ordenadas.length < 2) {
+      return { tipo: 'nuevo', delta: null, label: 'Sin comparación' };
+    }
+
+    const penultima = _toNumber(ordenadas.at(-2).promedio) || 0;
+    const ultima = _toNumber(ordenadas.at(-1).promedio) || 0;
+    const delta = Number((ultima - penultima).toFixed(1));
+
+    if (Math.abs(delta) < 0.1) return { tipo: 'igual', delta: 0, label: 'Estable' };
+    if (delta > 0) return { tipo: 'sube', delta, label: `+${delta}` };
+    return { tipo: 'baja', delta, label: String(delta) };
+  }
+
+  function _promedio(valores) {
+    const nums = valores.map(_toNumber).filter((v) => v != null);
+    if (!nums.length) return null;
+    return _round1(nums.reduce((acc, v) => acc + v, 0) / nums.length);
+  }
+
+  function calcularEstadisticas(periodo) {
+    const empleados = state.empleados.filter(Boolean);
+    const empleadosActivos = empleados.filter((e) => e.activo !== false);
+    const empleadosActivosIds = new Set(empleadosActivos.map((e) => e.id));
+
+    const evalsPeriodo = Object.values(state.evaluaciones)
+      .filter((ev) => ev && ev.periodo === periodo);
+
+    const historicasFuente = state.evaluacionesHistoricas.length
+      ? state.evaluacionesHistoricas
+      : evalsPeriodo;
+
+    const promedioGeneral = _promedio(evalsPeriodo.map((ev) => ev.promedio));
+    const evaluadosActivos = evalsPeriodo.filter((ev) => empleadosActivosIds.has(ev.empleadoId));
+    const evaluadosActivosIds = new Set(evaluadosActivos.map((ev) => ev.empleadoId));
+    const cobertura = empleadosActivos.length
+      ? Math.round((evaluadosActivosIds.size / empleadosActivos.length) * 100)
+      : 0;
+
+    const bajos = evalsPeriodo
+      .filter((ev) => (_toNumber(ev.promedio) || 0) < 3)
+      .sort((a, b) => (_toNumber(a.promedio) || 0) - (_toNumber(b.promedio) || 0));
+
+    const pendientes = empleadosActivos
+      .filter((emp) => !evaluadosActivosIds.has(emp.id))
+      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' }));
+
+    const ranking = evalsPeriodo
       .map((ev) => {
-        const emp = empleadosActivos.find((e) => e.id === ev.empleadoId);
+        const emp = empleados.find((e) => e.id === ev.empleadoId);
         return emp
           ? {
               ...emp,
-              promedio: Number(ev.promedio) || 0,
+              promedio: _round1(ev.promedio) ?? 0,
+              totalPuntosPeriodo: _round1(_sumarValoresCalificacion(ev)) ?? 0,
               eval: ev,
             }
           : null;
@@ -408,11 +507,12 @@ const app = (() => {
     const itemTotales = {};
     const itemCounts = {};
 
-    evals.forEach((ev) => {
+    evalsPeriodo.forEach((ev) => {
       if (!ev.calificaciones || typeof ev.calificaciones !== 'object') return;
 
       Object.entries(ev.calificaciones).forEach(([itemId, valor]) => {
-        const num = Number(valor) || 0;
+        const num = _toNumber(valor);
+        if (num == null) return;
         itemTotales[itemId] = (itemTotales[itemId] || 0) + num;
         itemCounts[itemId] = (itemCounts[itemId] || 0) + 1;
       });
@@ -426,18 +526,102 @@ const app = (() => {
         return {
           id,
           nombre: item ? item.nombre : id,
-          promedio: promedio.toFixed(1),
+          descripcion: item?.descripcion || '',
+          promedio: _round1(promedio),
+          evaluaciones: itemCounts[id] || 0,
+          porcentaje: Math.max(0, Math.min(100, Math.round((promedio / 5) * 100))),
         };
       })
-      .sort((a, b) => parseFloat(a.promedio) - parseFloat(b.promedio));
+      .sort((a, b) => (a.promedio || 0) - (b.promedio || 0));
+
+    const acumuladoPorMiembro = empleados
+      .map((emp) => {
+        const evalsEmp = historicasFuente
+          .filter((ev) => ev?.empleadoId === emp.id)
+          .sort((a, b) => _periodoSortAsc(a.periodo, b.periodo));
+
+        const totalPuntos = evalsEmp.reduce((acc, ev) => acc + _sumarValoresCalificacion(ev), 0);
+        const totalItems = evalsEmp.reduce((acc, ev) => acc + _itemsEvaluados(ev), 0);
+        const promedios = evalsEmp.map((ev) => ev.promedio);
+        const promedioHistorico = _promedio(promedios);
+        const tendencia = _calcularTendencia(evalsEmp);
+        const ultimo = evalsEmp.at(-1) || null;
+        const mejor = evalsEmp.reduce((best, ev) => {
+          if (!best) return ev;
+          return (_toNumber(ev.promedio) || 0) > (_toNumber(best.promedio) || 0) ? ev : best;
+        }, null);
+        const peor = evalsEmp.reduce((worst, ev) => {
+          if (!worst) return ev;
+          return (_toNumber(ev.promedio) || 0) < (_toNumber(worst.promedio) || 0) ? ev : worst;
+        }, null);
+
+        return {
+          id: emp.id,
+          nombre: emp.nombre || 'Sin nombre',
+          rol: emp.rol || 'Sin rol',
+          activo: emp.activo !== false,
+          evaluaciones: evalsEmp.length,
+          itemsCalificados: totalItems,
+          totalPuntos: _round1(totalPuntos) ?? 0,
+          promedioHistorico,
+          ultimoPromedio: _round1(ultimo?.promedio),
+          ultimoPeriodo: ultimo?.periodo || '',
+          mejorPromedio: _round1(mejor?.promedio),
+          mejorPeriodo: mejor?.periodo || '',
+          peorPromedio: _round1(peor?.promedio),
+          peorPeriodo: peor?.periodo || '',
+          tendencia,
+        };
+      })
+      .filter((emp) => emp.evaluaciones > 0)
+      .sort((a, b) => {
+        if ((b.totalPuntos || 0) !== (a.totalPuntos || 0)) return (b.totalPuntos || 0) - (a.totalPuntos || 0);
+        return (b.promedioHistorico || 0) - (a.promedioHistorico || 0);
+      });
+
+    const tendenciaMensual = [...new Set(historicasFuente.map((ev) => ev.periodo).filter(Boolean))]
+      .sort(_periodoSortAsc)
+      .slice(-12)
+      .map((per) => {
+        const evals = historicasFuente.filter((ev) => ev.periodo === per);
+        const promedio = _promedio(evals.map((ev) => ev.promedio));
+        return {
+          periodo: per,
+          promedio,
+          evaluaciones: evals.length,
+          porcentaje: promedio != null ? Math.max(0, Math.min(100, Math.round((promedio / 5) * 100))) : 0,
+        };
+      });
+
+    const distribucion = {
+      excelente: evalsPeriodo.filter((ev) => (_toNumber(ev.promedio) || 0) >= 4.5).length,
+      bueno: evalsPeriodo.filter((ev) => {
+        const p = _toNumber(ev.promedio) || 0;
+        return p >= 3.8 && p < 4.5;
+      }).length,
+      estable: evalsPeriodo.filter((ev) => {
+        const p = _toNumber(ev.promedio) || 0;
+        return p >= 3 && p < 3.8;
+      }).length,
+      alerta: bajos.length,
+    };
 
     return {
       totalActivos: empleadosActivos.length,
-      evaluados: evals.length,
+      evaluados: evalsPeriodo.length,
+      evaluadosActivos: evaluadosActivosIds.size,
+      cobertura,
       promedioGeneral,
+      historicasTotal: historicasFuente.length,
       bajos,
+      pendientes,
       ranking,
-      itemsMasbajos: itemsPromedio.slice(0, 5),
+      itemsMasbajos: itemsPromedio.slice(0, 6),
+      itemsPromedio,
+      acumuladoPorMiembro,
+      tendenciaMensual,
+      distribucion,
+      mejorActual: ranking[0] || null,
     };
   }
 
@@ -489,6 +673,7 @@ const app = (() => {
     state.empleados = [];
     state.items = [];
     state.evaluaciones = {};
+    state.evaluacionesHistoricas = [];
     state.currentView = 'dashboard';
   }
 
@@ -585,6 +770,7 @@ const app = (() => {
     getEmpleados,
     getItems,
     getEvaluaciones,
+    getEvaluacionesHistoricas,
     getPeriodoActivo,
     getPeriodoLabel,
     getItemsParaRol,

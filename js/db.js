@@ -295,6 +295,33 @@ const db = (() => {
     }
   }
 
+
+  function escucharTodasEvaluaciones(callback) {
+    try {
+      const ref = collection(getFirestore(), COLLECTIONS.evaluaciones);
+
+      return onSnapshot(
+        ref,
+        (snapshot) => {
+          const evaluaciones = snapshot.docs
+            .map(mapSnapshot)
+            .sort(ordenarPorPeriodoDesc);
+
+          callback(evaluaciones);
+        },
+        (error) => {
+          console.error('Error escuchando histórico de evaluaciones:', error);
+          // No bloqueamos la app si el histórico falla. El dashboard del período sigue funcionando.
+          callback([]);
+        }
+      );
+    } catch (error) {
+      console.error('Error iniciando listener histórico de evaluaciones:', error);
+      callback([]);
+      return () => {};
+    }
+  }
+
   // ── Guardar empleado ─────────────────────────────────────
   async function guardarEmpleado() {
     try {
@@ -523,6 +550,7 @@ const db = (() => {
     escucharEmpleados,
     escucharItems,
     escucharEvaluaciones,
+    escucharTodasEvaluaciones,
     guardarEmpleado,
     guardarItem,
     guardarEvaluacion,

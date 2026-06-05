@@ -55,6 +55,53 @@ const ui = (() => {
     if (el) el.textContent = value;
   }
 
+  function formatoNumero(valor, decimales = 1) {
+    if (valor == null || valor === '') return '—';
+    const n = Number(valor);
+    if (!Number.isFinite(n)) return '—';
+    return n.toLocaleString('es-CO', {
+      minimumFractionDigits: n % 1 === 0 ? 0 : decimales,
+      maximumFractionDigits: decimales,
+    });
+  }
+
+  function formatoPuntos(valor) {
+    if (valor == null || valor === '') return '0';
+    const n = Number(valor);
+    if (!Number.isFinite(n)) return '0';
+    return n.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+  }
+
+  function trendClass(tendencia = {}) {
+    if (tendencia.tipo === 'sube') return 'trend-up';
+    if (tendencia.tipo === 'baja') return 'trend-down';
+    if (tendencia.tipo === 'igual') return 'trend-flat';
+    return 'trend-new';
+  }
+
+  function trendLabel(tendencia = {}) {
+    if (tendencia.tipo === 'sube') return `↑ ${tendencia.label}`;
+    if (tendencia.tipo === 'baja') return `↓ ${tendencia.label}`;
+    if (tendencia.tipo === 'igual') return '→ estable';
+    return tendencia.label || 'Sin comparación';
+  }
+
+  function scoreClass(score) {
+    if (score == null || score === '') return 'score-muted';
+    const n = Number(score);
+    if (!Number.isFinite(n)) return 'score-muted';
+    if (n < 3) return 'score-danger';
+    if (n < 3.8) return 'score-warning';
+    return 'score-good';
+  }
+
+  function porcentajeDesdeScore(score) {
+    if (score == null || score === '') return 0;
+    const n = Number(score);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(100, Math.round((n / 5) * 100)));
+  }
+
   function syncToggleLabels() {
     const empActivo = $('emp-activo');
     const empActivoLabel = $('emp-activo-label');
@@ -159,13 +206,54 @@ const ui = (() => {
     const app = obtenerApp();
     const periodo = app.getPeriodoActivo();
     const stats = app.calcularEstadisticas(periodo);
+    const periodoLabel = app.getPeriodoLabel(periodo);
 
     setText('stat-total', String(stats.totalActivos || 0));
-    setText('stat-evaluados', String(stats.evaluados || 0));
-    setText('stat-promedio', stats.promedioGeneral != null ? String(stats.promedioGeneral) : '—');
+    setText('stat-evaluados', String(stats.evaluadosActivos ?? stats.evaluados ?? 0));
+    setText('stat-cobertura', `${stats.cobertura || 0}%`);
+    setText('stat-promedio', stats.promedioGeneral != null ? formatoNumero(stats.promedioGeneral) : '—');
     setText('stat-bajos', String(stats.bajos?.length || 0));
-    setText('badge-periodo', app.getPeriodoLabel(periodo));
+    setText('stat-historicas', String(stats.historicasTotal || 0));
+    setText('badge-periodo', periodoLabel);
+    setText('hero-periodo', periodoLabel);
     setText('badge-alertas', String(stats.bajos?.length || 0));
+    setText('badge-pendientes', String(stats.pendientes?.length || 0));
+    setText('badge-acumulado', `${stats.acumuladoPorMiembro?.length || 0} miembros`);
+
+    const acumuladoList = $('acumulado-list');
+    if (acumuladoList) {
+      if (!stats.acumuladoPorMiembro?.length) {
+        acumuladoList.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">&#128202;</span>
+            <p>No hay evaluaciones históricas todavía.</p>
+          </div>
+        `;
+      } else {
+        acumuladoList.innerHTML = stats.acumuladoPorMiembro
+          .slice(0, 10)
+          .map((emp, index) => `
+            <button class="acumulado-row" type="button" onclick="ui.verHistorialEmpleado('${escapeHtml(emp.id)}')">
+              <div class="rank-position">#${index + 1}</div>
+              <div class="emp-avatar">${escapeHtml(getInicial(emp.nombre))}</div>
+              <div class="acumulado-main">
+                <div class="rank-name">${escapeHtml(emp.nombre || 'Sin nombre')}</div>
+                <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')} · ${escapeHtml(String(emp.evaluaciones || 0))} eval.</div>
+                <div class="mini-progress"><span style="width:${porcentajeDesdeScore(emp.promedioHistorico)}%"></span></div>
+              </div>
+              <div class="acumulado-metrics">
+                <strong>${escapeHtml(formatoPuntos(emp.totalPuntos))}</strong>
+                <span>pts</span>
+              </div>
+              <div class="acumulado-score ${scoreClass(emp.promedioHistorico)}">
+                ${escapeHtml(formatoNumero(emp.promedioHistorico))}
+              </div>
+              <div class="trend-pill ${trendClass(emp.tendencia)}">${escapeHtml(trendLabel(emp.tendencia))}</div>
+            </button>
+          `)
+          .join('');
+      }
+    }
 
     const rankingList = $('ranking-list');
     if (rankingList) {
@@ -178,17 +266,44 @@ const ui = (() => {
         `;
       } else {
         rankingList.innerHTML = stats.ranking
+          .slice(0, 8)
           .map((emp, index) => `
             <div class="ranking-item">
               <div class="rank-left">
-                <div class="rank-position">#${index + 1}</div>
+                <div class="rank-position ${index === 0 ? 'gold' : index === 1 ? 'silver' : index === 2 ? 'bronze' : ''}">#${index + 1}</div>
                 <div class="emp-avatar">${escapeHtml(getInicial(emp.nombre))}</div>
                 <div class="rank-info">
                   <div class="rank-name">${escapeHtml(emp.nombre || 'Sin nombre')}</div>
-                  <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')}</div>
+                  <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')} · ${escapeHtml(formatoPuntos(emp.totalPuntosPeriodo))} pts</div>
                 </div>
               </div>
-              <div class="rank-score">${escapeHtml(String(emp.promedio ?? '—'))}</div>
+              <div class="rank-score score-badge ${scoreClass(emp.promedio)}">${escapeHtml(formatoNumero(emp.promedio))}</div>
+            </div>
+          `)
+          .join('');
+      }
+    }
+
+    const pendientesList = $('pendientes-list');
+    if (pendientesList) {
+      if (!stats.pendientes?.length) {
+        pendientesList.innerHTML = `
+          <div class="empty-state compact-empty">
+            <span class="empty-icon">&#10003;</span>
+            <p>Todo el equipo activo ya fue evaluado.</p>
+          </div>
+        `;
+      } else {
+        pendientesList.innerHTML = stats.pendientes
+          .slice(0, 8)
+          .map((emp) => `
+            <div class="pendiente-row">
+              <div class="emp-avatar small">${escapeHtml(getInicial(emp.nombre))}</div>
+              <div class="rank-info">
+                <div class="rank-name">${escapeHtml(emp.nombre || 'Sin nombre')}</div>
+                <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')}</div>
+              </div>
+              <button class="btn-ghost" type="button" onclick="ui.irAEvaluacion('${escapeHtml(emp.id)}')">Evaluar</button>
             </div>
           `)
           .join('');
@@ -199,7 +314,7 @@ const ui = (() => {
     if (alertasList) {
       if (!stats.bajos?.length) {
         alertasList.innerHTML = `
-          <div class="empty-state">
+          <div class="empty-state compact-empty">
             <span class="empty-icon">&#10003;</span>
             <p>Todo el equipo está en buen nivel.</p>
           </div>
@@ -218,11 +333,36 @@ const ui = (() => {
                   <div class="alerta-name">${escapeHtml(nombre)}</div>
                   <div class="rank-role">${escapeHtml(rol)}</div>
                 </div>
-                <div class="alerta-score">${escapeHtml(String(ev.promedio ?? '—'))}</div>
+                <button class="alerta-score score-badge score-danger" type="button" onclick="ui.irAEvaluacion('${escapeHtml(ev.empleadoId)}')">${escapeHtml(formatoNumero(ev.promedio))}</button>
               </div>
             `;
           })
           .join('');
+      }
+    }
+
+    const tendenciaList = $('tendencia-list');
+    if (tendenciaList) {
+      if (!stats.tendenciaMensual?.length) {
+        tendenciaList.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">&#128200;</span>
+            <p>Cuando haya varios períodos evaluados, aquí aparece la evolución.</p>
+          </div>
+        `;
+      } else {
+        tendenciaList.innerHTML = `
+          <div class="trend-grid">
+            ${stats.tendenciaMensual.map((item) => `
+              <div class="trend-row">
+                <div class="trend-period">${escapeHtml(app.getPeriodoLabel(item.periodo))}</div>
+                <div class="trend-bar"><span style="width:${item.porcentaje || 0}%"></span></div>
+                <div class="trend-score ${scoreClass(item.promedio)}">${escapeHtml(formatoNumero(item.promedio))}</div>
+                <div class="trend-count">${escapeHtml(String(item.evaluaciones || 0))} eval.</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
       }
     }
 
@@ -238,13 +378,14 @@ const ui = (() => {
       } else {
         itemsBajosList.innerHTML = stats.itemsMasbajos
           .map((item) => `
-            <div class="item-config-row">
+            <div class="item-analytics-row">
               <div class="item-config-body">
                 <div class="item-config-nombre">${escapeHtml(item.nombre || 'Ítem')}</div>
-                <div class="item-config-desc">Promedio del equipo en este criterio</div>
+                <div class="item-config-desc">${escapeHtml(item.descripcion || 'Promedio del equipo en este criterio')} · ${escapeHtml(String(item.evaluaciones || 0))} evaluaciones</div>
               </div>
+              <div class="item-lowbar"><span style="width:${item.porcentaje || 0}%"></span></div>
               <div class="item-config-meta">
-                <strong>${escapeHtml(String(item.promedio ?? '—'))}</strong>
+                <strong class="score-badge ${scoreClass(item.promedio)}">${escapeHtml(formatoNumero(item.promedio))}</strong>
               </div>
             </div>
           `)
@@ -313,6 +454,8 @@ const ui = (() => {
 
     const app = obtenerApp();
     const periodo = app.getPeriodoActivo();
+    const stats = app.calcularEstadisticas(periodo);
+    const acumuladoMap = new Map((stats.acumuladoPorMiembro || []).map((emp) => [emp.id, emp]));
     const empleados = obtenerEmpleadosFiltrados();
 
     if (!empleados.length) {
@@ -329,17 +472,32 @@ const ui = (() => {
       .map((emp) => {
         const evaluacion = app.getEvaluacion(emp.id, periodo);
         const promedio = evaluacion?.promedio ?? null;
+        const historico = acumuladoMap.get(emp.id);
         const scoreHtml = promedio != null
           ? `
-              <div class="emp-score">
-                <span class="emp-score-num">${escapeHtml(String(promedio))}</span>
-                <span class="emp-score-label">este mes</span>
+              <div class="emp-score ${scoreClass(promedio)}">
+                <span class="emp-score-num">${escapeHtml(formatoNumero(promedio))}</span>
+                <span class="emp-score-label">este período</span>
               </div>
             `
           : `
-              <div class="emp-score">
+              <div class="emp-score score-muted">
                 <span class="emp-score-num">—</span>
                 <span class="emp-score-label">sin evaluar</span>
+              </div>
+            `;
+
+        const histHtml = historico
+          ? `
+              <div class="emp-history-strip">
+                <span><strong>${escapeHtml(formatoPuntos(historico.totalPuntos))}</strong> pts</span>
+                <span><strong>${escapeHtml(formatoNumero(historico.promedioHistorico))}</strong> hist.</span>
+                <span class="trend-pill ${trendClass(historico.tendencia)}">${escapeHtml(trendLabel(historico.tendencia))}</span>
+              </div>
+            `
+          : `
+              <div class="emp-history-strip muted">
+                <span>Sin histórico todavía</span>
               </div>
             `;
 
@@ -357,6 +515,8 @@ const ui = (() => {
               <span class="rol-badge">${escapeHtml(emp.rol || 'Sin rol')}</span>
               ${scoreHtml}
             </div>
+
+            ${histHtml}
 
             <div class="emp-card-actions">
               <button class="btn-secondary" onclick="ui.irAEvaluacion('${escapeHtml(emp.id)}')">Evaluar</button>
@@ -861,15 +1021,21 @@ const ui = (() => {
     setText('historial-nombre', emp.nombre || 'Sin nombre');
     setText('historial-rol', emp.rol || 'Sin rol');
     setText('historial-prom-global', '—');
+    setText('historial-evals', '0');
+    setText('historial-puntos', '0');
+    setText('historial-mejor', '—');
+    setText('historial-tendencia', '—');
 
     const tbody = $('historial-tbody');
+    const itemsResumen = $('historial-items-resumen');
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5">Cargando historial...</td>
+          <td colspan="6">Cargando historial...</td>
         </tr>
       `;
     }
+    if (itemsResumen) itemsResumen.innerHTML = '';
 
     abrirModal('modal-historial');
 
@@ -880,36 +1046,121 @@ const ui = (() => {
     if (!historial.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="5">No hay evaluaciones registradas para este miembro.</td>
+          <td colspan="6">No hay evaluaciones registradas para este miembro.</td>
         </tr>
       `;
+      if (itemsResumen) itemsResumen.innerHTML = '';
       return;
     }
+
+    const historialAsc = [...historial]
+      .filter((h) => h?.periodo)
+      .sort((a, b) => String(a.periodo).localeCompare(String(b.periodo)));
 
     const valores = historial
       .map((h) => Number(h.promedio))
       .filter((v) => Number.isFinite(v));
+
+    const puntosPorEvaluacion = (h) => {
+      const valoresItems = Object.values(h.calificaciones || {})
+        .map(Number)
+        .filter((v) => Number.isFinite(v));
+      if (valoresItems.length) return valoresItems.reduce((a, b) => a + b, 0);
+      const promedio = Number(h.promedio);
+      const totalItems = Number(h.itemsEvaluados ?? h.totalItems);
+      if (Number.isFinite(promedio) && Number.isFinite(totalItems)) return promedio * totalItems;
+      return Number.isFinite(promedio) ? promedio : 0;
+    };
+
+    const totalPuntos = historial.reduce((acc, h) => acc + puntosPorEvaluacion(h), 0);
+    const mejor = historial.reduce((best, h) => {
+      if (!best) return h;
+      return (Number(h.promedio) || 0) > (Number(best.promedio) || 0) ? h : best;
+    }, null);
 
     if (valores.length) {
       const promGlobal = (valores.reduce((a, b) => a + b, 0) / valores.length).toFixed(1);
       setText('historial-prom-global', promGlobal);
     }
 
+    setText('historial-evals', String(historial.length));
+    setText('historial-puntos', formatoPuntos(totalPuntos));
+    setText('historial-mejor', mejor ? `${formatoNumero(mejor.promedio)} · ${app.getPeriodoLabel(mejor.periodo || '')}` : '—');
+
+    if (historialAsc.length >= 2) {
+      const last = Number(historialAsc.at(-1).promedio) || 0;
+      const prev = Number(historialAsc.at(-2).promedio) || 0;
+      const delta = Number((last - prev).toFixed(1));
+      const tendencia = Math.abs(delta) < 0.1
+        ? '→ estable'
+        : delta > 0
+          ? `↑ +${delta}`
+          : `↓ ${delta}`;
+      setText('historial-tendencia', tendencia);
+    } else {
+      setText('historial-tendencia', 'Sin comparación');
+    }
+
     tbody.innerHTML = historial
-      .map((h) => `
-        <tr>
-          <td>${escapeHtml(app.getPeriodoLabel(h.periodo || '—'))}</td>
-          <td><strong>${escapeHtml(String(h.promedio ?? '—'))}</strong></td>
-          <td>${escapeHtml(String(h.itemsEvaluados ?? h.totalItems ?? 0))}</td>
-          <td>${escapeHtml(h.observaciones || '—')}</td>
-          <td>
-            <button class="btn-ghost" onclick="ui.irAEvaluacion('${escapeHtml(empleadoId)}', '${escapeHtml(h.periodo || '')}')">
-              Abrir
-            </button>
-          </td>
-        </tr>
-      `)
+      .map((h) => {
+        const puntos = puntosPorEvaluacion(h);
+        return `
+          <tr>
+            <td>${escapeHtml(app.getPeriodoLabel(h.periodo || '—'))}</td>
+            <td><strong class="${scoreClass(h.promedio)}">${escapeHtml(formatoNumero(h.promedio))}</strong></td>
+            <td>${escapeHtml(formatoPuntos(puntos))}</td>
+            <td>${escapeHtml(String(h.itemsEvaluados ?? h.totalItems ?? 0))}</td>
+            <td>${escapeHtml(h.observaciones || '—')}</td>
+            <td>
+              <button class="btn-ghost" onclick="ui.irAEvaluacion('${escapeHtml(empleadoId)}', '${escapeHtml(h.periodo || '')}')">
+                Abrir
+              </button>
+            </td>
+          </tr>
+        `;
+      })
       .join('');
+
+    if (itemsResumen) {
+      const itemTotals = {};
+      const itemCounts = {};
+      historial.forEach((h) => {
+        Object.entries(h.calificaciones || {}).forEach(([itemId, valor]) => {
+          const num = Number(valor);
+          if (!Number.isFinite(num)) return;
+          itemTotals[itemId] = (itemTotals[itemId] || 0) + num;
+          itemCounts[itemId] = (itemCounts[itemId] || 0) + 1;
+        });
+      });
+
+      const items = Object.entries(itemTotals)
+        .map(([itemId, total]) => {
+          const item = getItemPorId(itemId);
+          const promedio = total / (itemCounts[itemId] || 1);
+          return {
+            nombre: item?.nombre || itemId,
+            promedio,
+            count: itemCounts[itemId] || 0,
+            porcentaje: porcentajeDesdeScore(promedio),
+          };
+        })
+        .sort((a, b) => a.promedio - b.promedio);
+
+      if (items.length) {
+        itemsResumen.innerHTML = `
+          <div class="historial-items-title">Promedio histórico por criterio</div>
+          ${items.map((item) => `
+            <div class="historial-item-row">
+              <span>${escapeHtml(item.nombre)}</span>
+              <div class="item-lowbar"><span style="width:${item.porcentaje}%"></span></div>
+              <strong class="score-badge ${scoreClass(item.promedio)}">${escapeHtml(formatoNumero(item.promedio))}</strong>
+            </div>
+          `).join('')}
+        `;
+      } else {
+        itemsResumen.innerHTML = '';
+      }
+    }
   }
 
   // ── API pública ──────────────────────────────────────────
