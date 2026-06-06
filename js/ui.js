@@ -207,6 +207,7 @@ const ui = (() => {
     const periodo = app.getPeriodoActivo();
     const stats = app.calcularEstadisticas(periodo);
     const periodoLabel = app.getPeriodoLabel(periodo);
+    const mesRegistro = app.getMesRegistroLabel?.() || 'este mes';
 
     setText('stat-total', String(stats.totalActivos || 0));
     setText('stat-evaluados', String(stats.evaluadosActivos ?? stats.evaluados ?? 0));
@@ -216,9 +217,11 @@ const ui = (() => {
     setText('stat-historicas', String(stats.historicasTotal || 0));
     setText('badge-periodo', periodoLabel);
     setText('hero-periodo', periodoLabel);
+    setText('period-context', `Registro en ${mesRegistro}: estás evaluando el desempeño de ${periodoLabel}.`);
     setText('badge-alertas', String(stats.bajos?.length || 0));
-    setText('badge-pendientes', String(stats.pendientes?.length || 0));
+    setText('badge-pendientes', String(stats.pendientesUsuario?.length ?? stats.pendientes?.length ?? 0));
     setText('badge-acumulado', `${stats.acumuladoPorMiembro?.length || 0} miembros`);
+    setText('badge-mis-evaluaciones', String(stats.historicoUsuario?.length || 0));
 
     const acumuladoList = $('acumulado-list');
     if (acumuladoList) {
@@ -274,7 +277,7 @@ const ui = (() => {
                 <div class="emp-avatar">${escapeHtml(getInicial(emp.nombre))}</div>
                 <div class="rank-info">
                   <div class="rank-name">${escapeHtml(emp.nombre || 'Sin nombre')}</div>
-                  <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')} · ${escapeHtml(formatoPuntos(emp.totalPuntosPeriodo))} pts</div>
+                  <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')} · ${escapeHtml(formatoPuntos(emp.totalPuntosPeriodo))} pts · ${escapeHtml(String(emp.evaluadores || 1))} eval.</div>
                 </div>
               </div>
               <div class="rank-score score-badge ${scoreClass(emp.promedio)}">${escapeHtml(formatoNumero(emp.promedio))}</div>
@@ -286,22 +289,23 @@ const ui = (() => {
 
     const pendientesList = $('pendientes-list');
     if (pendientesList) {
-      if (!stats.pendientes?.length) {
+      const pendientesUsuario = stats.pendientesUsuario || stats.pendientes || [];
+      if (!pendientesUsuario.length) {
         pendientesList.innerHTML = `
           <div class="empty-state compact-empty">
             <span class="empty-icon">&#10003;</span>
-            <p>Todo el equipo activo ya fue evaluado.</p>
+            <p>Ya calificaste a todo el equipo activo en este período.</p>
           </div>
         `;
       } else {
-        pendientesList.innerHTML = stats.pendientes
+        pendientesList.innerHTML = pendientesUsuario
           .slice(0, 8)
           .map((emp) => `
             <div class="pendiente-row">
               <div class="emp-avatar small">${escapeHtml(getInicial(emp.nombre))}</div>
               <div class="rank-info">
                 <div class="rank-name">${escapeHtml(emp.nombre || 'Sin nombre')}</div>
-                <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')}</div>
+                <div class="rank-role">${escapeHtml(emp.rol || 'Sin rol')} · pendiente para ti</div>
               </div>
               <button class="btn-ghost" type="button" onclick="ui.irAEvaluacion('${escapeHtml(emp.id)}')">Evaluar</button>
             </div>
@@ -334,6 +338,40 @@ const ui = (() => {
                   <div class="rank-role">${escapeHtml(rol)}</div>
                 </div>
                 <button class="alerta-score score-badge score-danger" type="button" onclick="ui.irAEvaluacion('${escapeHtml(ev.empleadoId)}')">${escapeHtml(formatoNumero(ev.promedio))}</button>
+              </div>
+            `;
+          })
+          .join('');
+      }
+    }
+
+    const misEvaluacionesList = $('mis-evaluaciones-list');
+    if (misEvaluacionesList) {
+      const historicoUsuario = stats.historicoUsuario || [];
+
+      if (!historicoUsuario.length) {
+        misEvaluacionesList.innerHTML = `
+          <div class="empty-state compact-empty">
+            <span class="empty-icon">&#128221;</span>
+            <p>Aún no has guardado evaluaciones.</p>
+          </div>
+        `;
+      } else {
+        misEvaluacionesList.innerHTML = historicoUsuario
+          .slice(0, 8)
+          .map((ev) => {
+            const emp = getEmpleadoPorId(ev.empleadoId);
+            const nombre = emp?.nombre || ev.empleadoNombre || 'Sin nombre';
+            const rol = emp?.rol || ev.empleadoRol || 'Sin rol';
+
+            return `
+              <div class="pendiente-row">
+                <div class="emp-avatar small">${escapeHtml(getInicial(nombre))}</div>
+                <div class="rank-info">
+                  <div class="rank-name">${escapeHtml(nombre)}</div>
+                  <div class="rank-role">${escapeHtml(app.getPeriodoLabel(ev.periodo || ''))} · ${escapeHtml(rol)}</div>
+                </div>
+                <button class="alerta-score score-badge ${scoreClass(ev.promedio)}" type="button" onclick="ui.irAEvaluacion('${escapeHtml(ev.empleadoId)}', '${escapeHtml(ev.periodo || '')}')">${escapeHtml(formatoNumero(ev.promedio))}</button>
               </div>
             `;
           })
@@ -744,10 +782,13 @@ const ui = (() => {
   function actualizarEstadoEval() {
     const empleadoId = $('eval-empleado')?.value || '';
     const periodo = $('eval-periodo')?.value || obtenerApp().getPeriodoActivo();
+    const periodoLabel = obtenerApp().getPeriodoLabel(periodo);
+    const mesRegistro = obtenerApp().getMesRegistroLabel?.() || 'este mes';
 
     const card = $('eval-empleado-card');
     const estado = $('eval-estado');
     const btnGuardar = $('btn-guardar-eval');
+    setText('eval-periodo-hint', `Registro en ${mesRegistro}. Este formulario corresponde al desempeño de ${periodoLabel}.`);
 
     if (!empleadoId) {
       card?.classList.add('hidden');
@@ -1031,7 +1072,7 @@ const ui = (() => {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6">Cargando historial...</td>
+          <td colspan="7">Cargando historial...</td>
         </tr>
       `;
     }
@@ -1046,7 +1087,7 @@ const ui = (() => {
     if (!historial.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6">No hay evaluaciones registradas para este miembro.</td>
+          <td colspan="7">No hay evaluaciones registradas para este miembro.</td>
         </tr>
       `;
       if (itemsResumen) itemsResumen.innerHTML = '';
@@ -1108,6 +1149,7 @@ const ui = (() => {
           <tr>
             <td>${escapeHtml(app.getPeriodoLabel(h.periodo || '—'))}</td>
             <td><strong class="${scoreClass(h.promedio)}">${escapeHtml(formatoNumero(h.promedio))}</strong></td>
+            <td>${escapeHtml(h.evaluatorName || h.evaluatorEmail || h.updatedBy || h.createdBy || '—')}</td>
             <td>${escapeHtml(formatoPuntos(puntos))}</td>
             <td>${escapeHtml(String(h.itemsEvaluados ?? h.totalItems ?? 0))}</td>
             <td>${escapeHtml(h.observaciones || '—')}</td>

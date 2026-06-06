@@ -113,9 +113,11 @@ const app = (() => {
   function generarPeriodos(cantidad = 12) {
     const periodos = [];
     const ahora = new Date();
+    const periodoSugerido = getPeriodoSugerido();
+    const year = Number(periodoSugerido.slice(0, 4)) || ahora.getFullYear();
 
     for (let i = 0; i < cantidad; i++) {
-      const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+      const d = new Date(year, i, 1);
       const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       const label = d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
 
@@ -128,9 +130,21 @@ const app = (() => {
     return periodos;
   }
 
+  function getPeriodoSugerido() {
+    const ahora = new Date();
+    const periodoEvaluado = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+    return `${periodoEvaluado.getFullYear()}-${String(periodoEvaluado.getMonth() + 1).padStart(2, '0')}`;
+  }
+
   function getPeriodoLabel(valor) {
     const periodo = state.periodos.find((p) => p.valor === valor);
     return periodo ? periodo.label : valor;
+  }
+
+  function getMesRegistroLabel() {
+    const ahora = new Date();
+    const label = ahora.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
   }
 
   function poblarSelectoresPeriodo() {
@@ -388,6 +402,18 @@ const app = (() => {
     return state.periodoActivo;
   }
 
+  function getAuthUserEmail() {
+    return String(state.authUser?.email || '').trim().toLowerCase();
+  }
+
+  function _normalizarIdEvaluador(email) {
+    return String(email || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'sin_usuario';
+  }
+
+  function _getEvaluacionKey(empleadoId, periodo, evaluatorEmail = getAuthUserEmail()) {
+    return `${periodo}_${empleadoId}_${_normalizarIdEvaluador(evaluatorEmail)}`;
+  }
+
   function getItemsParaRol(rol) {
     return state.items.filter((item) =>
       item &&
@@ -396,9 +422,16 @@ const app = (() => {
     );
   }
 
-  function getEvaluacion(empleadoId, periodo) {
-    const key = `${periodo}_${empleadoId}`;
-    return state.evaluaciones[key] || null;
+  function getEvaluacion(empleadoId, periodo, evaluatorEmail = getAuthUserEmail()) {
+    const key = _getEvaluacionKey(empleadoId, periodo, evaluatorEmail);
+    return state.evaluaciones[key]
+      || Object.values(state.evaluaciones).find((ev) =>
+        ev?.periodo === periodo
+        && ev?.empleadoId === empleadoId
+        && !ev?.evaluatorEmail
+        && !ev?.evaluatorId
+      )
+      || null;
   }
 
   // ── Dashboard / métricas ─────────────────────────────────
@@ -462,6 +495,31 @@ const app = (() => {
     return _round1(nums.reduce((acc, v) => acc + v, 0) / nums.length);
   }
 
+  function _agruparPeriodoPorEmpleado(evalsPeriodo) {
+    const grupos = new Map();
+
+    evalsPeriodo.forEach((ev) => {
+      if (!ev?.empleadoId) return;
+      const actuales = grupos.get(ev.empleadoId) || [];
+      actuales.push(ev);
+      grupos.set(ev.empleadoId, actuales);
+    });
+
+    return [...grupos.entries()].map(([empleadoId, evals]) => {
+      const base = evals[0] || {};
+      return {
+        ...base,
+        id: `${base.periodo || ''}_${empleadoId}_resumen`,
+        empleadoId,
+        promedio: _promedio(evals.map((ev) => ev.promedio)),
+        totalItems: evals.reduce((acc, ev) => acc + _itemsEvaluados(ev), 0),
+        calificaciones: evals.reduce((acc, ev) => ({ ...acc, ...(ev.calificaciones || {}) }), {}),
+        evaluadores: evals.length,
+        evaluacionesDetalle: evals,
+      };
+    });
+  }
+
   function calcularEstadisticas(periodo) {
     const empleados = state.empleados.filter(Boolean);
     const empleadosActivos = empleados.filter((e) => e.activo !== false);
@@ -473,9 +531,23 @@ const app = (() => {
     const historicasFuente = state.evaluacionesHistoricas.length
       ? state.evaluacionesHistoricas
       : evalsPeriodo;
+    const emailUsuario = getAuthUserEmail();
+    const historicoUsuario = historicasFuente
+      .filter((ev) => {
+        const email = String(ev.evaluatorEmail || ev.updatedBy || ev.createdBy || '').trim().toLowerCase();
+        return emailUsuario && email === emailUsuario;
+      })
+      .sort((a, b) => String(b.periodo || '').localeCompare(String(a.periodo || '')));
+
+    const evalsPeriodoPorEmpleado = _agruparPeriodoPorEmpleado(evalsPeriodo);
+    const evaluacionesUsuarioPeriodo = evalsPeriodo.filter((ev) => {
+      const email = String(ev.evaluatorEmail || ev.updatedBy || ev.createdBy || '').trim().toLowerCase();
+      return email && email === getAuthUserEmail();
+    });
+    const evaluadosUsuarioIds = new Set(evaluacionesUsuarioPeriodo.map((ev) => ev.empleadoId));
 
     const promedioGeneral = _promedio(evalsPeriodo.map((ev) => ev.promedio));
-    const evaluadosActivos = evalsPeriodo.filter((ev) => empleadosActivosIds.has(ev.empleadoId));
+    const evaluadosActivos = evalsPeriodoPorEmpleado.filter((ev) => empleadosActivosIds.has(ev.empleadoId));
     const evaluadosActivosIds = new Set(evaluadosActivos.map((ev) => ev.empleadoId));
     const cobertura = empleadosActivos.length
       ? Math.round((evaluadosActivosIds.size / empleadosActivos.length) * 100)
@@ -489,14 +561,19 @@ const app = (() => {
       .filter((emp) => !evaluadosActivosIds.has(emp.id))
       .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' }));
 
-    const ranking = evalsPeriodo
+    const pendientesUsuario = empleadosActivos
+      .filter((emp) => !evaluadosUsuarioIds.has(emp.id))
+      .sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', { sensitivity: 'base' }));
+
+    const ranking = evalsPeriodoPorEmpleado
       .map((ev) => {
         const emp = empleados.find((e) => e.id === ev.empleadoId);
         return emp
           ? {
               ...emp,
               promedio: _round1(ev.promedio) ?? 0,
-              totalPuntosPeriodo: _round1(_sumarValoresCalificacion(ev)) ?? 0,
+              totalPuntosPeriodo: _round1(ev.evaluacionesDetalle?.reduce((acc, item) => acc + _sumarValoresCalificacion(item), 0) ?? _sumarValoresCalificacion(ev)) ?? 0,
+              evaluadores: ev.evaluadores || 1,
               eval: ev,
             }
           : null;
@@ -610,11 +687,14 @@ const app = (() => {
       totalActivos: empleadosActivos.length,
       evaluados: evalsPeriodo.length,
       evaluadosActivos: evaluadosActivosIds.size,
+      evaluacionesUsuario: evaluacionesUsuarioPeriodo.length,
       cobertura,
       promedioGeneral,
       historicasTotal: historicasFuente.length,
+      historicoUsuario,
       bajos,
       pendientes,
+      pendientesUsuario,
       ranking,
       itemsMasbajos: itemsPromedio.slice(0, 6),
       itemsPromedio,
@@ -719,8 +799,7 @@ const app = (() => {
   // ── Inicialización ───────────────────────────────────────
   async function init() {
     if (!state.periodoActivo) {
-      const ahora = new Date();
-      state.periodoActivo = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+      state.periodoActivo = getPeriodoSugerido();
     }
 
     poblarSelectoresPeriodo();
@@ -773,6 +852,8 @@ const app = (() => {
     getEvaluacionesHistoricas,
     getPeriodoActivo,
     getPeriodoLabel,
+    getMesRegistroLabel,
+    getAuthUserEmail,
     getItemsParaRol,
     getEvaluacion,
     calcularEstadisticas,

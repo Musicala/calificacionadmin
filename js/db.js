@@ -43,6 +43,24 @@ const db = (() => {
     return getCurrentUser()?.email || '';
   }
 
+  function getCurrentUserName() {
+    const user = getCurrentUser();
+    const displayName = String(user?.displayName || '').trim();
+    if (displayName) return displayName;
+
+    const email = String(user?.email || '').trim();
+    return email ? email.split('@')[0].replace(/[._-]+/g, ' ') : '';
+  }
+
+  function normalizarIdEvaluador(email) {
+    return normalizarEmail(email).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'sin_usuario';
+  }
+
+  function getEvaluacionKey(data) {
+    const evaluatorId = data.evaluatorId || normalizarIdEvaluador(data.evaluatorEmail || data.updatedBy || data.createdBy || '');
+    return `${data.periodo}_${data.empleadoId}_${evaluatorId}`;
+  }
+
   // ── Helpers ───────────────────────────────────────────────
   function notificar(mensaje, tipo = 'success') {
     if (window.ui?.toast) {
@@ -275,8 +293,9 @@ const db = (() => {
 
           snapshot.docs.forEach((docSnap) => {
             const data = mapSnapshot(docSnap);
-            const key = `${data.periodo}_${data.empleadoId}`;
+            const key = getEvaluacionKey(data);
             evaluacionesMap[key] = data;
+
           });
 
           callback(evaluacionesMap);
@@ -487,7 +506,16 @@ const db = (() => {
         return false;
       }
 
-      const docId = `${periodo}_${empleado.id}`;
+      const evaluatorEmail = getCurrentUserEmail();
+      const evaluatorName = getCurrentUserName();
+      const evaluatorId = normalizarIdEvaluador(evaluatorEmail);
+
+      if (!evaluatorEmail) {
+        notificar('No se pudo identificar el usuario evaluador.', 'error');
+        return false;
+      }
+
+      const docId = `${periodo}_${empleado.id}_${evaluatorId}`;
       const ref   = doc(getFirestore(), COLLECTIONS.evaluaciones, docId);
       const prev  = await getDoc(ref);
 
@@ -496,6 +524,9 @@ const db = (() => {
         empleadoNombre  : empleado.nombre || '',
         empleadoRol     : empleado.rol || '',
         periodo,
+        evaluatorId,
+        evaluatorEmail,
+        evaluatorName,
         calificaciones,
         observaciones,
         promedio,
