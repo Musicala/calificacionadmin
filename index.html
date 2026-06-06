@@ -115,6 +115,7 @@
         </div>
         <div class="topbar-right">
           <div class="period-selector">
+            <span class="period-selector-label">Período evaluado</span>
             <select id="select-periodo" class="select-inline" onchange="app.setPeriodo(this.value)">
               <!-- Opciones generadas por JS -->
             </select>
@@ -129,9 +130,12 @@
           <div>
             <p class="eyebrow">Control administrativo</p>
             <h1>Dashboard de desempeño</h1>
-            <p class="hero-copy">Vista rápida del período, acumulado histórico y puntos de atención para guiar seguimientos sin improvisar en modo incendio institucional.</p>
+            <p class="hero-copy">Vista rápida del período evaluado, acumulado histórico y puntos de atención. La evaluación se registra este mes sobre el desempeño del mes anterior.</p>
           </div>
           <div class="hero-pill" id="hero-periodo">—</div>
+        </div>
+        <div class="period-context" id="period-context">
+          Registras la evaluación ahora sobre el período seleccionado.
         </div>
 
         <!-- Resumen rápido -->
@@ -147,14 +151,14 @@
             <div class="stat-icon stat-violet">&#11088;</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-evaluados">0</span>
-              <span class="stat-label">Evaluados este período</span>
+              <span class="stat-label">Evaluados del período</span>
             </div>
           </div>
           <div class="stat-card stat-card-glow">
             <div class="stat-icon stat-green">%</div>
             <div class="stat-body">
               <span class="stat-value" id="stat-cobertura">0%</span>
-              <span class="stat-label">Cobertura del período</span>
+              <span class="stat-label">Cobertura del período evaluado</span>
             </div>
           </div>
           <div class="stat-card stat-card-glow">
@@ -197,7 +201,7 @@
 
           <div class="panel">
             <div class="panel-header">
-              <h2 class="panel-title">Ranking del período</h2>
+              <h2 class="panel-title">Ranking del período evaluado</h2>
               <span class="panel-badge" id="badge-periodo">—</span>
             </div>
             <div class="panel-body" id="ranking-list">
@@ -210,13 +214,26 @@
 
           <div class="panel">
             <div class="panel-header">
-              <h2 class="panel-title">Pendientes del período</h2>
+              <h2 class="panel-title">Pendientes del período evaluado</h2>
               <span class="badge-alert" id="badge-pendientes">0</span>
             </div>
             <div class="panel-body" id="pendientes-list">
               <div class="empty-state">
                 <span class="empty-icon">&#10003;</span>
                 <p>Todo el equipo activo ya fue evaluado.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="panel-title">Mis evaluaciones recientes</h2>
+              <span class="panel-badge" id="badge-mis-evaluaciones">0</span>
+            </div>
+            <div class="panel-body" id="mis-evaluaciones-list">
+              <div class="empty-state">
+                <span class="empty-icon">&#128221;</span>
+                <p>Aún no has guardado evaluaciones.</p>
               </div>
             </div>
           </div>
@@ -314,10 +331,11 @@
               </div>
               <div class="panel-body">
                 <div class="form-group">
-                  <label class="form-label">Período</label>
+                  <label class="form-label">Período evaluado</label>
                   <select id="eval-periodo" class="form-input">
                     <!-- Opciones por JS -->
                   </select>
+                  <p class="form-hint" id="eval-periodo-hint">Selecciona el mes que estás evaluando, no el mes en que llenas el formulario.</p>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Miembro del equipo</label>
@@ -375,7 +393,7 @@
                       id="eval-observaciones"
                       class="form-input form-textarea"
                       rows="4"
-                      placeholder="Notas relevantes sobre el desempeño de este período..."
+                      placeholder="Notas relevantes sobre el desempeño del período evaluado..."
                     ></textarea>
                   </div>
 
@@ -634,6 +652,7 @@
               <tr>
                 <th>Período</th>
                 <th>Promedio</th>
+                <th>Evaluador</th>
                 <th>Puntos</th>
                 <th>Ítems evaluados</th>
                 <th>Observaciones</th>
