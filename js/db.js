@@ -152,6 +152,15 @@ const db = (() => {
     return app.getEmpleados().find(e => e.id === empleadoId) || null;
   }
 
+  function obtenerEvaluadorConfidencial() {
+    const empleadoId = $('conf-evaluador')?.value || '';
+    if (!empleadoId) return null;
+
+    if (!window.app?.getEmpleados) return null;
+
+    return app.getEmpleados().find(e => e.id === empleadoId) || null;
+  }
+
   function obtenerPeriodoSeleccionado() {
     return $('eval-periodo')?.value || window.app?.getPeriodoActivo?.() || '';
   }
@@ -395,6 +404,7 @@ const db = (() => {
 
       cerrarModalSeguro('modal-empleado');
       limpiarFormularioEmpleado();
+
       return true;
     } catch (error) {
       console.error('Error guardando empleado:', error);
@@ -509,6 +519,7 @@ const db = (() => {
       const evaluatorEmail = getCurrentUserEmail();
       const evaluatorName = getCurrentUserName();
       const evaluatorId = normalizarIdEvaluador(evaluatorEmail);
+      const peerEvaluator = obtenerEvaluadorConfidencial();
 
       if (!evaluatorEmail) {
         notificar('No se pudo identificar el usuario evaluador.', 'error');
@@ -527,6 +538,9 @@ const db = (() => {
         evaluatorId,
         evaluatorEmail,
         evaluatorName,
+        peerEvaluatorId  : peerEvaluator?.id || '',
+        peerEvaluatorName: peerEvaluator?.nombre || '',
+        peerEvaluatorRol : peerEvaluator?.rol || '',
         calificaciones,
         observaciones,
         promedio,
@@ -543,6 +557,10 @@ const db = (() => {
         payload.createdBy = getCurrentUserEmail();
         await setDoc(ref, payload);
         notificar('Evaluación guardada correctamente.');
+      }
+
+      if (window.ui?.onEvaluacionGuardada) {
+        window.ui.onEvaluacionGuardada();
       }
 
       return true;

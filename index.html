@@ -87,6 +87,10 @@
           <span class="nav-icon">&#11088;</span>
           <span class="nav-label">Evaluar</span>
         </a>
+        <a href="#" class="nav-item" data-view="confidencial" onclick="event.preventDefault(); app.navigate('confidencial');">
+          <span class="nav-icon">&#127922;</span>
+          <span class="nav-label">Confidencial</span>
+        </a>
         <a href="#" class="nav-item" data-view="config" onclick="event.preventDefault(); app.navigate('config');">
           <span class="nav-icon">&#9881;</span>
           <span class="nav-label">Configuración</span>
@@ -429,6 +433,88 @@
       </section>
 
       <!-- ── VIEW: CONFIGURACIÓN ── -->
+      <section id="view-confidencial" class="app-view">
+        <div class="confidential-wrap">
+          <div class="confidential-hero">
+            <div>
+              <p class="eyebrow">Modo confidencial</p>
+              <h1>Ruleta de evaluacion</h1>
+              <p class="hero-copy">Pantalla segura para que un miembro del equipo evalue a una persona asignada al azar, sin ver puntajes, comentarios ni historial de nadie.</p>
+            </div>
+            <div class="confidential-actions">
+              <button id="btn-conf-activar-modo" class="btn-light" type="button" onclick="ui.activarModoConfidencialSeguro()">
+                Activar modo confidencial
+              </button>
+              <button id="btn-conf-salir-modo" class="btn-light danger hidden" type="button" onclick="ui.salirModoConfidencialSeguro()">
+                Salir con clave
+              </button>
+              <div class="confidential-lock">
+                <span>&#128274;</span>
+                Solo formulario
+              </div>
+            </div>
+          </div>
+
+          <div class="period-context" id="conf-period-context">
+            La ruleta usa el periodo evaluado seleccionado.
+          </div>
+
+          <div class="confidential-grid">
+            <div class="panel">
+              <div class="panel-header">
+                <h2 class="panel-title">Asignacion aleatoria</h2>
+                <span class="panel-badge" id="conf-periodo-badge">-</span>
+              </div>
+              <div class="panel-body confidential-panel-body">
+                <div class="form-group">
+                  <label class="form-label">Quien evalua</label>
+                  <select id="conf-evaluador" class="form-input" onchange="ui.refrescarModoConfidencial()">
+                    <option value="">Seleccionar miembro...</option>
+                  </select>
+                  <p class="form-hint">Sirve para que la ruleta no le asigne a una persona evaluarse a si misma.</p>
+                </div>
+
+                <div class="confidential-counter">
+                  <span id="conf-pendientes-count">0</span>
+                  <small>pendientes para este evaluador</small>
+                </div>
+
+                <div id="conf-roulette-card" class="roulette-card">
+                  <div class="roulette-avatar" id="conf-avatar">?</div>
+                  <div>
+                    <p class="roulette-label">Persona asignada</p>
+                    <h2 id="conf-nombre">Sin asignar</h2>
+                    <span id="conf-rol" class="rol-badge">Activa la ruleta</span>
+                  </div>
+                </div>
+
+                <button id="btn-conf-ruleta" class="btn-primary btn-wide" type="button" onclick="ui.activarRuletaConfidencial()">
+                  Activar ruleta
+                </button>
+                <button id="btn-conf-limpiar" class="btn-secondary btn-wide" type="button" onclick="ui.limpiarModoConfidencial()">
+                  Limpiar pantalla
+                </button>
+
+                <p class="form-hint">
+                  No se repite una persona que este evaluador ya haya calificado en el periodo seleccionado.
+                </p>
+              </div>
+            </div>
+
+            <div class="eval-main confidential-eval-main">
+              <div id="conf-placeholder" class="eval-placeholder">
+                <span class="placeholder-icon">&#127922;</span>
+                <p>Activa la ruleta para desbloquear el formulario confidencial.</p>
+              </div>
+
+              <div id="conf-form-shell" class="hidden">
+                <div id="confidential-form-mount"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="view-config" class="app-view">
 
         <div class="config-grid">

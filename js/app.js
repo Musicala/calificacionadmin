@@ -212,6 +212,10 @@ const app = (() => {
         _safeCall(_getUi()?.actualizarEstadoEval);
         _safeCall(_getUi()?.cargarFormularioEval);
       }
+
+      if (state.currentView === 'confidencial') {
+        _safeCall(_getUi()?.refrescarModoConfidencial);
+      }
     });
   }
 
@@ -225,6 +229,7 @@ const app = (() => {
     dashboard: 'Dashboard',
     empleados: 'Equipo',
     evaluacion: 'Evaluar',
+    confidencial: 'Confidencial',
     config: 'Configuración',
   };
 
@@ -266,6 +271,9 @@ const app = (() => {
         break;
       case 'evaluacion':
         _safeCall(ui?.prepararVistaEvaluacion);
+        break;
+      case 'confidencial':
+        _safeCall(ui?.prepararModoConfidencial);
         break;
       case 'config':
         _safeCall(ui?.renderConfig);
@@ -332,6 +340,10 @@ const app = (() => {
           _safeCall(ui?.actualizarEstadoEval);
         }
 
+        if (state.currentView === 'confidencial') {
+          _safeCall(ui?.prepararModoConfidencial);
+        }
+
         if (state.currentView === 'dashboard') {
           _safeCall(ui?.renderDashboard);
         }
@@ -354,6 +366,10 @@ const app = (() => {
           _safeCall(ui?.cargarFormularioEval);
         }
 
+        if (state.currentView === 'confidencial') {
+          _safeCall(ui?.refrescarModoConfidencial);
+        }
+
         if (state.currentView === 'dashboard') {
           _safeCall(ui?.renderDashboard);
         }
@@ -370,6 +386,10 @@ const app = (() => {
 
         if (state.currentView === 'empleados') {
           _safeCall(ui?.renderEmpleados);
+        }
+
+        if (state.currentView === 'confidencial') {
+          _safeCall(ui?.refrescarModoConfidencial);
         }
       });
     }
@@ -432,6 +452,11 @@ const app = (() => {
         && !ev?.evaluatorId
       )
       || null;
+  }
+
+  function getEmpleadosPendientesUsuario(periodo = getPeriodoActivo()) {
+    const stats = calcularEstadisticas(periodo);
+    return stats.pendientesUsuario || [];
   }
 
   // ── Dashboard / métricas ─────────────────────────────────
@@ -856,6 +881,7 @@ const app = (() => {
     getAuthUserEmail,
     getItemsParaRol,
     getEvaluacion,
+    getEmpleadosPendientesUsuario,
     calcularEstadisticas,
     getHistorialEmpleado,
     limpiarListeners,

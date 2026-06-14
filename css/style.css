@@ -2572,3 +2572,299 @@ body {
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+
+.confidential-wrap {
+  display: grid;
+  gap: 18px;
+}
+
+.confidential-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 26px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(21, 17, 46, 0.96), rgba(41, 80, 122, 0.9));
+  color: #fff;
+}
+
+.confidential-hero .eyebrow,
+.confidential-hero .hero-copy {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.confidential-hero h1 {
+  margin: 4px 0 8px;
+}
+
+.confidential-lock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.confidential-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-light {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-light:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-light.danger {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(239, 68, 68, 0.42);
+}
+
+.confidential-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.confidential-panel-body {
+  display: grid;
+  gap: 14px;
+}
+
+.confidential-counter {
+  display: grid;
+  gap: 2px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.confidential-counter span {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 900;
+  color: var(--text-primary);
+}
+
+.confidential-counter small,
+.roulette-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roulette-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 116px;
+  padding: 16px;
+  border: 1px dashed rgba(21, 17, 46, 0.22);
+  border-radius: 16px;
+  background: rgba(21, 17, 46, 0.04);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.roulette-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.55) 45%, transparent 70%);
+  opacity: 0;
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+
+.roulette-card.roulette-active {
+  border-style: solid;
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.roulette-card.roulette-spinning {
+  border-style: solid;
+  border-color: rgba(87, 41, 255, 0.38);
+  background: rgba(87, 41, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.roulette-card.roulette-spinning::after {
+  opacity: 1;
+  animation: rouletteShine 0.78s linear infinite;
+}
+
+.roulette-card.roulette-spinning .roulette-avatar {
+  animation: rouletteSpin 0.58s linear infinite;
+  background: linear-gradient(135deg, #5729ff, #10b981);
+}
+
+.roulette-card.roulette-spinning h2 {
+  animation: rouletteNamePulse 0.32s ease-in-out infinite alternate;
+}
+
+.roulette-card.roulette-revealed {
+  animation: rouletteReveal 0.72s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.roulette-avatar {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+@keyframes rouletteSpin {
+  from {
+    transform: rotate(0deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(180deg) scale(1.08);
+  }
+
+  to {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes rouletteShine {
+  from {
+    transform: translateX(-120%);
+  }
+
+  to {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes rouletteNamePulse {
+  from {
+    transform: translateY(0);
+    opacity: 0.72;
+  }
+
+  to {
+    transform: translateY(-1px);
+    opacity: 1;
+  }
+}
+
+@keyframes rouletteReveal {
+  0% {
+    transform: scale(0.98);
+  }
+
+  48% {
+    transform: scale(1.035);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.roulette-card h2 {
+  margin: 2px 0 8px;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.btn-wide {
+  width: 100%;
+  justify-content: center;
+}
+
+.confidential-eval-main .panel {
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.confidential-form-container {
+  display: block;
+}
+
+body.confidential-kiosk {
+  overflow: hidden;
+}
+
+body.confidential-kiosk .sidebar,
+body.confidential-kiosk .topbar {
+  display: none;
+}
+
+body.confidential-kiosk .main-content {
+  margin-left: 0;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 22px;
+  overflow: auto;
+}
+
+body.confidential-kiosk #view-confidencial {
+  min-height: calc(100vh - 44px);
+}
+
+body.confidential-kiosk .confidential-wrap {
+  min-height: calc(100vh - 44px);
+}
+
+body.confidential-kiosk .confidential-hero {
+  padding: 20px 24px;
+}
+
+body.confidential-kiosk .confidential-hero h1 {
+  font-size: 34px;
+}
+
+body.confidential-kiosk .confidential-grid {
+  grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+}
+
+body.confidential-kiosk #btn-conf-limpiar,
+body.confidential-kiosk .confidential-lock {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .confidential-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .confidential-grid {
+    grid-template-columns: 1fr;
+  }
+}

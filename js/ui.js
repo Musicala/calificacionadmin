@@ -11,6 +11,10 @@ const ui = (() => {
     filtroItemsRol: 'todos',
     toastTimer: null,
     listenersInicializados: false,
+    confidentialEmpleadoId: '',
+    evalFormHome: null,
+    confidentialKioskActive: false,
+    rouletteSpinTimer: null,
   };
 
   // ── Helpers ──────────────────────────────────────────────
@@ -741,8 +745,322 @@ const ui = (() => {
   }
 
   // ── Evaluación ────────────────────────────────────────────
+  function asegurarHomeFormularioEval() {
+    const form = $('eval-form-container');
+    const main = document.querySelector('#view-evaluacion .eval-main');
+
+    if (!form || !main) return null;
+
+    if (!state.evalFormHome) {
+      state.evalFormHome = { parent: main };
+    }
+
+    return state.evalFormHome;
+  }
+
+  function restaurarFormularioEval() {
+    const form = $('eval-form-container');
+    const placeholder = $('eval-placeholder');
+    const home = asegurarHomeFormularioEval();
+
+    if (!form || !home?.parent) return;
+
+    if (form.parentElement !== home.parent) {
+      home.parent.appendChild(form);
+    }
+
+    placeholder?.classList.remove('hidden');
+    form.classList.add('hidden');
+    form.classList.remove('confidential-form-container');
+  }
+
+  function moverFormularioAConfidencial() {
+    const form = $('eval-form-container');
+    const mount = $('confidential-form-mount');
+
+    asegurarHomeFormularioEval();
+
+    if (!form || !mount) return;
+    if (form.parentElement !== mount) {
+      mount.appendChild(form);
+    }
+
+    form.classList.add('confidential-form-container');
+  }
+
+  function getPendientesConfidenciales() {
+    const app = obtenerApp();
+    const periodo = app.getPeriodoActivo();
+    const evaluadorId = $('conf-evaluador')?.value || '';
+    const pendientes = typeof app.getEmpleadosPendientesUsuario === 'function'
+      ? app.getEmpleadosPendientesUsuario(periodo)
+      : app.calcularEstadisticas(periodo).pendientesUsuario || [];
+
+    return pendientes.filter((emp) => emp?.activo !== false && emp.id !== evaluadorId);
+  }
+
+  function actualizarSelectEvaluadorConfidencial() {
+    const select = $('conf-evaluador');
+    if (!select) return;
+
+    const valorActual = select.value || '';
+    const empleados = [...obtenerApp().getEmpleados()]
+      .filter((e) => e.activo !== false)
+      .sort((a, b) =>
+        String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', {
+          sensitivity: 'base',
+          numeric: true,
+        })
+      );
+
+    select.innerHTML = `
+      <option value="">Seleccionar miembro...</option>
+      ${empleados
+        .map((emp) => `<option value="${escapeHtml(emp.id)}">${escapeHtml(emp.nombre || 'Sin nombre')} · ${escapeHtml(emp.rol || 'Sin rol')}</option>`)
+        .join('')}
+    `;
+
+    if (empleados.some((emp) => emp.id === valorActual)) {
+      select.value = valorActual;
+    }
+  }
+
+  function pintarResumenConfidencial() {
+    const app = obtenerApp();
+    const periodo = app.getPeriodoActivo();
+    const periodoLabel = app.getPeriodoLabel(periodo);
+    const mesRegistro = app.getMesRegistroLabel?.() || 'este mes';
+    const pendientes = getPendientesConfidenciales();
+    const btn = $('btn-conf-ruleta');
+
+    setText('conf-periodo-badge', periodoLabel);
+    setText('conf-period-context', `Registro en ${mesRegistro}: la ruleta asigna evaluaciones sobre ${periodoLabel}.`);
+    setText('conf-pendientes-count', String(pendientes.length));
+
+    if (btn) {
+      btn.disabled = !pendientes.length;
+      btn.textContent = pendientes.length ? 'Activar ruleta' : 'Sin pendientes para este evaluador';
+    }
+  }
+
+  function setConfidentialAssigned(emp = null) {
+    const card = $('conf-roulette-card');
+
+    if (!emp) {
+      state.confidentialEmpleadoId = '';
+      setText('conf-avatar', '?');
+      setText('conf-nombre', 'Sin asignar');
+      setText('conf-rol', 'Activa la ruleta');
+      card?.classList.remove('roulette-active');
+      return;
+    }
+
+    state.confidentialEmpleadoId = emp.id;
+    setText('conf-avatar', getInicial(emp.nombre));
+    setText('conf-nombre', emp.nombre || 'Sin nombre');
+    setText('conf-rol', emp.rol || 'Sin rol');
+    card?.classList.remove('roulette-spinning');
+    card?.classList.add('roulette-active', 'roulette-revealed');
+
+    setTimeout(() => {
+      card?.classList.remove('roulette-revealed');
+    }, 900);
+  }
+
+  function pintarOpcionRuleta(emp) {
+    if (!emp) return;
+
+    setText('conf-avatar', getInicial(emp.nombre));
+    setText('conf-nombre', emp.nombre || 'Sin nombre');
+    setText('conf-rol', emp.rol || 'Sin rol');
+  }
+
+  function esperar(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function animarRuletaConfidencial(candidatos, elegido) {
+    const card = $('conf-roulette-card');
+    const btn = $('btn-conf-ruleta');
+
+    if (!card || !candidatos.length) return;
+
+    if (state.rouletteSpinTimer) {
+      clearInterval(state.rouletteSpinTimer);
+      state.rouletteSpinTimer = null;
+    }
+
+    card.classList.remove('roulette-active', 'roulette-revealed');
+    card.classList.add('roulette-spinning');
+    setText('conf-rol', 'Girando...');
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Girando...';
+    }
+
+    let index = Math.floor(Math.random() * candidatos.length);
+    pintarOpcionRuleta(candidatos[index]);
+
+    state.rouletteSpinTimer = setInterval(() => {
+      index = (index + 1 + Math.floor(Math.random() * Math.max(1, candidatos.length))) % candidatos.length;
+      pintarOpcionRuleta(candidatos[index]);
+    }, 95);
+
+    await esperar(1600);
+
+    clearInterval(state.rouletteSpinTimer);
+    state.rouletteSpinTimer = null;
+    pintarOpcionRuleta(elegido);
+
+    await esperar(260);
+
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Activar ruleta';
+    }
+  }
+
+  function limpiarModoConfidencial({ silent = false } = {}) {
+    setConfidentialAssigned(null);
+    const card = $('conf-roulette-card');
+
+    if (state.rouletteSpinTimer) {
+      clearInterval(state.rouletteSpinTimer);
+      state.rouletteSpinTimer = null;
+    }
+
+    card?.classList.remove('roulette-spinning', 'roulette-revealed');
+
+    const select = $('eval-empleado');
+    if (select) select.value = '';
+
+    if ($('eval-observaciones')) $('eval-observaciones').value = '';
+    if ($('eval-items-container')) $('eval-items-container').innerHTML = '';
+
+    $('conf-placeholder')?.classList.remove('hidden');
+    $('conf-form-shell')?.classList.add('hidden');
+    $('eval-form-container')?.classList.add('hidden');
+
+    actualizarPromedioLive();
+    pintarResumenConfidencial();
+
+    if (!silent) toast('Pantalla confidencial limpia.');
+  }
+
+  function prepararModoConfidencial() {
+    inicializarListenersBase();
+    actualizarSelectEvaluacion();
+    actualizarSelectEvaluadorConfidencial();
+    moverFormularioAConfidencial();
+    pintarResumenConfidencial();
+
+    if (state.confidentialEmpleadoId && getEmpleadoPorId(state.confidentialEmpleadoId)) {
+      const select = $('eval-empleado');
+      if (select) select.value = state.confidentialEmpleadoId;
+      $('conf-placeholder')?.classList.add('hidden');
+      $('conf-form-shell')?.classList.remove('hidden');
+      cargarFormularioEval();
+      return;
+    }
+
+    limpiarModoConfidencial({ silent: true });
+  }
+
+  function refrescarModoConfidencial() {
+    pintarResumenConfidencial();
+
+    if (!state.confidentialEmpleadoId) return;
+
+    const siguePendiente = getPendientesConfidenciales().some((emp) => emp.id === state.confidentialEmpleadoId);
+    if (!siguePendiente) {
+      limpiarModoConfidencial({ silent: true });
+    }
+  }
+
+  async function activarRuletaConfidencial() {
+    if (!$('conf-evaluador')?.value) {
+      toast('Selecciona primero quien esta evaluando.', 'error');
+      return;
+    }
+
+    const pendientes = getPendientesConfidenciales();
+
+    if (!pendientes.length) {
+      limpiarModoConfidencial({ silent: true });
+      toast('Este evaluador ya califico a todos los miembros activos en este periodo.', 'info');
+      return;
+    }
+
+    const elegido = pendientes[Math.floor(Math.random() * pendientes.length)];
+    const select = $('eval-empleado');
+
+    moverFormularioAConfidencial();
+    await animarRuletaConfidencial(pendientes, elegido);
+    setConfidentialAssigned(elegido);
+
+    if (select) select.value = elegido.id;
+
+    $('conf-placeholder')?.classList.add('hidden');
+    $('conf-form-shell')?.classList.remove('hidden');
+
+    cargarFormularioEval();
+    toast(`Asignado: ${elegido.nombre || 'miembro del equipo'}.`);
+  }
+
+  async function activarModoConfidencialSeguro() {
+    state.confidentialKioskActive = true;
+    document.body.classList.add('confidential-kiosk');
+    $('btn-conf-activar-modo')?.classList.add('hidden');
+    $('btn-conf-salir-modo')?.classList.remove('hidden');
+
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn('No se pudo activar pantalla completa:', error);
+      toast('Modo confidencial activo. Si el navegador no permite pantalla completa, usa F11.', 'info');
+      return;
+    }
+
+    toast('Modo confidencial activo.');
+  }
+
+  async function salirModoConfidencialSeguro() {
+    const clave = window.prompt('Clave para salir del modo confidencial');
+
+    if (clave !== '1320') {
+      toast('Clave incorrecta.', 'error');
+      return;
+    }
+
+    state.confidentialKioskActive = false;
+    document.body.classList.remove('confidential-kiosk');
+    $('btn-conf-activar-modo')?.classList.remove('hidden');
+    $('btn-conf-salir-modo')?.classList.add('hidden');
+
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.warn('No se pudo salir de pantalla completa:', error);
+    }
+
+    limpiarModoConfidencial({ silent: true });
+    toast('Modo confidencial cerrado.');
+  }
+
+  function onEvaluacionGuardada() {
+    if (obtenerApp().getState?.().currentView !== 'confidencial') return;
+    limpiarModoConfidencial({ silent: true });
+    toast('Evaluacion guardada. Pantalla limpia para la siguiente persona.');
+  }
+
   function prepararVistaEvaluacion() {
     inicializarListenersBase();
+    restaurarFormularioEval();
     actualizarSelectEvaluacion();
     actualizarEstadoEval();
     cargarFormularioEval();
@@ -1221,6 +1539,13 @@ const ui = (() => {
     abrirModalItem,
 
     prepararVistaEvaluacion,
+    prepararModoConfidencial,
+    refrescarModoConfidencial,
+    activarRuletaConfidencial,
+    limpiarModoConfidencial,
+    activarModoConfidencialSeguro,
+    salirModoConfidencialSeguro,
+    onEvaluacionGuardada,
     actualizarSelectEvaluacion,
     actualizarEstadoEval,
     cargarFormularioEval,
