@@ -2868,3 +2868,13 @@ body.confidential-kiosk .confidential-lock {
     grid-template-columns: 1fr;
   }
 }
+.panel-select {
+  max-width: 190px;
+  border: 1px solid #e3dff0;
+  border-radius: 10px;
+  background: #fff;
+  color: #514b66;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.82rem;
+}

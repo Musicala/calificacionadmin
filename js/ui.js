@@ -237,8 +237,16 @@ const ui = (() => {
           </div>
         `;
       } else {
-        acumuladoList.innerHTML = stats.acumuladoPorMiembro
-          .slice(0, 10)
+        const criterioOrden = $('orden-acumulado')?.value || 'puntos-desc';
+        const ascendente = criterioOrden.endsWith('-asc');
+        const campoOrden = criterioOrden.startsWith('calificacion')
+          ? 'promedioHistorico'
+          : 'totalPuntos';
+        acumuladoList.innerHTML = [...stats.acumuladoPorMiembro]
+          .sort((a, b) => {
+            const diferencia = (Number(a[campoOrden]) || 0) - (Number(b[campoOrden]) || 0);
+            return ascendente ? diferencia : -diferencia;
+          })
           .map((emp, index) => `
             <button class="acumulado-row" type="button" onclick="ui.verHistorialEmpleado('${escapeHtml(emp.id)}')">
               <div class="rank-position">#${index + 1}</div>
@@ -272,8 +280,16 @@ const ui = (() => {
           </div>
         `;
       } else {
-        rankingList.innerHTML = stats.ranking
-          .slice(0, 8)
+        const criterioOrden = $('orden-ranking')?.value || 'calificacion-desc';
+        const ascendente = criterioOrden.endsWith('-asc');
+        const campoOrden = criterioOrden.startsWith('puntos')
+          ? 'totalPuntosPeriodo'
+          : 'promedio';
+        rankingList.innerHTML = [...stats.ranking]
+          .sort((a, b) => {
+            const diferencia = (Number(a[campoOrden]) || 0) - (Number(b[campoOrden]) || 0);
+            return ascendente ? diferencia : -diferencia;
+          })
           .map((emp, index) => `
             <div class="ranking-item">
               <div class="rank-left">
@@ -289,6 +305,35 @@ const ui = (() => {
           `)
           .join('');
       }
+    }
+
+    const filtroEvaluador = $('filtro-evaluador-dashboard');
+    const evaluacionesEvaluadorList = $('evaluaciones-evaluador-list');
+    if (filtroEvaluador && evaluacionesEvaluadorList) {
+      const valorActual = filtroEvaluador.value;
+      filtroEvaluador.innerHTML = `
+        <option value="">Todos · acumulado</option>
+        ${(stats.evaluadoresResumen || []).map((item) =>
+          `<option value="${escapeHtml(item.id)}">${escapeHtml(item.nombre)} · ${item.evaluaciones} eval.</option>`
+        ).join('')}
+      `;
+      filtroEvaluador.value = [...filtroEvaluador.options].some((option) => option.value === valorActual) ? valorActual : '';
+
+      const detalle = (stats.evaluacionesPeriodoDetalle || [])
+        .filter((ev) => !filtroEvaluador.value || ev.evaluatorKey === filtroEvaluador.value);
+      evaluacionesEvaluadorList.innerHTML = detalle.length
+        ? detalle.map((ev) => `
+            <button class="acumulado-row" type="button" onclick="ui.verHistorialEmpleado('${escapeHtml(ev.empleadoId)}')">
+              <div class="emp-avatar">${escapeHtml(getInicial(ev.empleadoNombre))}</div>
+              <div class="acumulado-main">
+                <div class="rank-name">${escapeHtml(ev.empleadoNombre)}</div>
+                <div class="rank-role">Evaluó: ${escapeHtml(ev.evaluatorLabel)} · ${escapeHtml(ev.empleadoRol)}</div>
+              </div>
+              <div class="acumulado-metrics"><strong>${escapeHtml(formatoPuntos(ev.puntos))}</strong><span>pts</span></div>
+              <div class="acumulado-score ${scoreClass(ev.promedio)}">${escapeHtml(formatoNumero(ev.promedio))}</div>
+            </button>
+          `).join('')
+        : '<div class="empty-state"><p>No hay evaluaciones para este filtro.</p></div>';
     }
 
     const pendientesList = $('pendientes-list');
@@ -792,9 +837,10 @@ const ui = (() => {
     const app = obtenerApp();
     const periodo = app.getPeriodoActivo();
     const evaluadorId = $('conf-evaluador')?.value || '';
-    const pendientes = typeof app.getEmpleadosPendientesUsuario === 'function'
-      ? app.getEmpleadosPendientesUsuario(periodo)
-      : app.calcularEstadisticas(periodo).pendientesUsuario || [];
+    const evaluados = new Set(Object.values(app.getEvaluaciones?.() || {})
+      .filter((ev) => ev?.periodo === periodo && String(ev.evaluatorId || '') === evaluadorId)
+      .map((ev) => ev.empleadoId));
+    const pendientes = app.getEmpleados().filter((emp) => !evaluados.has(emp.id));
 
     return pendientes.filter((emp) => emp?.activo !== false && emp.id !== evaluadorId);
   }

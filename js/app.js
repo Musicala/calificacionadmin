@@ -443,8 +443,16 @@ const app = (() => {
   }
 
   function getEvaluacion(empleadoId, periodo, evaluatorEmail = getAuthUserEmail()) {
+    const evaluadorRuletaId = document.getElementById('conf-evaluador')?.value || '';
     const key = _getEvaluacionKey(empleadoId, periodo, evaluatorEmail);
     return state.evaluaciones[key]
+      || (evaluadorRuletaId
+        ? Object.values(state.evaluaciones).find((ev) =>
+            ev?.periodo === periodo
+            && ev?.empleadoId === empleadoId
+            && String(ev?.evaluatorId || '') === evaluadorRuletaId
+          )
+        : null)
       || Object.values(state.evaluaciones).find((ev) =>
         ev?.periodo === periodo
         && ev?.empleadoId === empleadoId
@@ -606,6 +614,30 @@ const app = (() => {
       .filter(Boolean)
       .sort((a, b) => b.promedio - a.promedio);
 
+    const evaluacionesPeriodoDetalle = evalsPeriodo
+      .map((ev) => {
+        const emp = empleados.find((e) => e.id === ev.empleadoId);
+        return {
+          ...ev,
+          empleadoNombre: emp?.nombre || ev.empleadoNombre || 'Sin nombre',
+          empleadoRol: emp?.rol || ev.empleadoRol || 'Sin rol',
+          evaluatorKey: String(ev.evaluatorId || ev.evaluatorEmail || ev.updatedBy || ev.createdBy || 'sin_evaluador'),
+          evaluatorLabel: ev.evaluatorName || ev.peerEvaluatorName || ev.evaluatorEmail || ev.updatedBy || ev.createdBy || 'Sin identificar',
+          puntos: _round1(_sumarValoresCalificacion(ev)) ?? 0,
+        };
+      })
+      .sort((a, b) => (_toNumber(b.promedio) || 0) - (_toNumber(a.promedio) || 0));
+
+    const evaluadoresResumen = [...evaluacionesPeriodoDetalle.reduce((map, ev) => {
+      const actual = map.get(ev.evaluatorKey) || { id: ev.evaluatorKey, nombre: ev.evaluatorLabel, evaluaciones: 0, suma: 0 };
+      actual.evaluaciones += 1;
+      actual.suma += _toNumber(ev.promedio) || 0;
+      map.set(ev.evaluatorKey, actual);
+      return map;
+    }, new Map()).values()]
+      .map((item) => ({ ...item, promedio: _round1(item.suma / item.evaluaciones) }))
+      .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' }));
+
     const itemTotales = {};
     const itemCounts = {};
 
@@ -721,6 +753,8 @@ const app = (() => {
       pendientes,
       pendientesUsuario,
       ranking,
+      evaluacionesPeriodoDetalle,
+      evaluadoresResumen,
       itemsMasbajos: itemsPromedio.slice(0, 6),
       itemsPromedio,
       acumuladoPorMiembro,

@@ -516,12 +516,14 @@ const db = (() => {
         return false;
       }
 
-      const evaluatorEmail = getCurrentUserEmail();
-      const evaluatorName = getCurrentUserName();
-      const evaluatorId = normalizarIdEvaluador(evaluatorEmail);
       const peerEvaluator = obtenerEvaluadorConfidencial();
+      const operatorEmail = getCurrentUserEmail();
+      const operatorName = getCurrentUserName();
+      const evaluatorEmail = peerEvaluator ? (peerEvaluator.email || '') : operatorEmail;
+      const evaluatorName = peerEvaluator?.nombre || operatorName;
+      const evaluatorId = peerEvaluator?.id || normalizarIdEvaluador(evaluatorEmail);
 
-      if (!evaluatorEmail) {
+      if (!operatorEmail) {
         notificar('No se pudo identificar el usuario evaluador.', 'error');
         return false;
       }
@@ -546,7 +548,9 @@ const db = (() => {
         promedio,
         totalItems      : Object.keys(calificaciones).length,
         updatedAt       : serverTimestamp(),
-        updatedBy       : getCurrentUserEmail(),
+        updatedBy       : operatorEmail,
+        operatorEmail,
+        operatorName,
       };
 
       if (prev.exists()) {
@@ -554,7 +558,7 @@ const db = (() => {
         notificar('Evaluación actualizada correctamente.');
       } else {
         payload.createdAt = serverTimestamp();
-        payload.createdBy = getCurrentUserEmail();
+        payload.createdBy = operatorEmail;
         await setDoc(ref, payload);
         notificar('Evaluación guardada correctamente.');
       }

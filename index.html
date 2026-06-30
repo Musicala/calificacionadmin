@@ -193,7 +193,12 @@
           <div class="panel panel-feature">
             <div class="panel-header">
               <h2 class="panel-title">Acumulado total por miembro</h2>
-              <span class="panel-badge" id="badge-acumulado">Histórico</span>
+              <select id="orden-acumulado" class="panel-select" onchange="ui.renderDashboard()">
+                <option value="puntos-desc">Puntaje: mayor a menor</option>
+                <option value="puntos-asc">Puntaje: menor a mayor</option>
+                <option value="calificacion-desc">Calificación: mayor a menor</option>
+                <option value="calificacion-asc">Calificación: menor a mayor</option>
+              </select>
             </div>
             <div class="panel-body" id="acumulado-list">
               <div class="empty-state">
@@ -206,7 +211,12 @@
           <div class="panel">
             <div class="panel-header">
               <h2 class="panel-title">Ranking del período evaluado</h2>
-              <span class="panel-badge" id="badge-periodo">—</span>
+              <select id="orden-ranking" class="panel-select" onchange="ui.renderDashboard()">
+                <option value="calificacion-desc">Calificación: mayor a menor</option>
+                <option value="calificacion-asc">Calificación: menor a mayor</option>
+                <option value="puntos-desc">Puntaje: mayor a menor</option>
+                <option value="puntos-asc">Puntaje: menor a mayor</option>
+              </select>
             </div>
             <div class="panel-body" id="ranking-list">
               <div class="empty-state">
@@ -214,6 +224,16 @@
                 <p>No hay evaluaciones para este período.</p>
               </div>
             </div>
+          </div>
+
+          <div class="panel panel-feature">
+            <div class="panel-header">
+              <h2 class="panel-title">Evaluaciones por evaluador</h2>
+              <select id="filtro-evaluador-dashboard" class="panel-select" onchange="ui.renderDashboard()">
+                <option value="">Todos · acumulado</option>
+              </select>
+            </div>
+            <div class="panel-body" id="evaluaciones-evaluador-list"></div>
           </div>
 
           <div class="panel">
