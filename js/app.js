@@ -442,6 +442,12 @@ const app = (() => {
     );
   }
 
+  // Ítems que un par (modo confidencial) puede evaluar.
+  // Por defecto todos los activos están habilitados (evaluablePorPares !== false).
+  function getItemsParaRolPares(rol) {
+    return getItemsParaRol(rol).filter((item) => item.evaluablePorPares !== false);
+  }
+
   function getEvaluacion(empleadoId, periodo, evaluatorEmail = getAuthUserEmail()) {
     const evaluadorRuletaId = document.getElementById('conf-evaluador')?.value || '';
     const key = _getEvaluacionKey(empleadoId, periodo, evaluatorEmail);
@@ -914,6 +920,7 @@ const app = (() => {
     getMesRegistroLabel,
     getAuthUserEmail,
     getItemsParaRol,
+    getItemsParaRolPares,
     getEvaluacion,
     getEmpleadosPendientesUsuario,
     calcularEstadisticas,

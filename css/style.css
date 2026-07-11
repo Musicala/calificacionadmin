@@ -2878,3 +2878,18 @@ body.confidential-kiosk .confidential-lock {
   font: inherit;
   font-size: 0.82rem;
 }
+
+/* Toggle rápido "Pares" en la lista de ítems de configuración */
+.pares-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  user-select: none;
+}
+.pares-toggle input {
+  cursor: pointer;
+  accent-color: #7c3aed;
+}

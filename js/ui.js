@@ -674,6 +674,7 @@ const ui = (() => {
     if ($('item-descripcion')) $('item-descripcion').value = '';
     if ($('item-rol')) $('item-rol').value = 'Universal';
     if ($('item-activo')) $('item-activo').checked = true;
+    if ($('item-pares')) $('item-pares').checked = true;
     syncToggleLabels();
   }
 
@@ -699,11 +700,21 @@ const ui = (() => {
     if ($('item-descripcion')) $('item-descripcion').value = item.descripcion || '';
     if ($('item-rol')) $('item-rol').value = item.rol || 'Universal';
     if ($('item-activo')) $('item-activo').checked = item.activo !== false;
+    if ($('item-pares')) $('item-pares').checked = item.evaluablePorPares !== false;
 
     if (titulo) titulo.textContent = 'Editar ítem de calificación';
     syncToggleLabels();
     abrirModal('modal-item');
     $('item-nombre')?.focus();
+  }
+
+  async function toggleItemPares(itemId, habilitado) {
+    const ok = await obtenerDb().setItemEvaluablePorPares(itemId, habilitado);
+    if (ok) {
+      toast(habilitado
+        ? 'Ítem habilitado para evaluación por pares.'
+        : 'Ítem oculto para los pares.');
+    }
   }
 
   function renderConfig() {
@@ -747,6 +758,11 @@ const ui = (() => {
               <div class="item-config-meta">
                 <span class="rol-badge">${escapeHtml(item.rol || 'Universal')}</span>
                 <span class="rol-badge">${item.activo === false ? 'Inactivo' : 'Activo'}</span>
+                <label class="pares-toggle" title="¿Los pares pueden evaluar este ítem en modo confidencial?">
+                  <input type="checkbox" ${item.evaluablePorPares === false ? '' : 'checked'}
+                    onchange="ui.toggleItemPares('${escapeHtml(item.id)}', this.checked)">
+                  <span>Pares</span>
+                </label>
                 <button class="btn-icon" title="Editar ítem" onclick="ui.abrirModalItem('${escapeHtml(item.id)}')">&#9998;</button>
               </div>
             </div>
@@ -1341,7 +1357,11 @@ const ui = (() => {
       return;
     }
 
-    const items = app.getItemsParaRol(empleado.rol);
+    // Modo confidencial (par evaluando): solo los ítems habilitados para pares.
+    const evaluadorParActivo = Boolean($('conf-evaluador')?.value);
+    const items = evaluadorParActivo
+      ? app.getItemsParaRolPares(empleado.rol)
+      : app.getItemsParaRol(empleado.rol);
 
     if (!items.length) {
       placeholder?.classList.remove('hidden');
@@ -1367,7 +1387,11 @@ const ui = (() => {
 
     bindStarRatings();
 
-    const evaluacionExistente = app.getEvaluacion(empleadoId, periodo);
+    // En modo confidencial el par siempre empieza en blanco: nunca se prellena
+    // con la evaluación del admin ni con la de nadie más (anonimato).
+    const evaluacionExistente = evaluadorParActivo
+      ? null
+      : app.getEvaluacion(empleadoId, periodo);
 
     if ($('eval-observaciones')) {
       $('eval-observaciones').value = evaluacionExistente?.observaciones || '';
@@ -1583,6 +1607,7 @@ const ui = (() => {
     renderConfig,
     filtrarItemsPorRol,
     abrirModalItem,
+    toggleItemPares,
 
     prepararVistaEvaluacion,
     prepararModoConfidencial,

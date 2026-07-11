@@ -421,6 +421,7 @@ const db = (() => {
       const descripcion  = normalizarTexto($('item-descripcion')?.value);
       const rol          = normalizarTexto($('item-rol')?.value) || 'Universal';
       const activo       = Boolean($('item-activo')?.checked);
+      const evaluablePorPares = $('item-pares') ? Boolean($('item-pares').checked) : true;
 
       if (!nombre) {
         notificar('Debes escribir el nombre del ítem.', 'error');
@@ -434,6 +435,7 @@ const db = (() => {
         descripcion,
         rol,
         activo,
+        evaluablePorPares,
         updatedAt   : serverTimestamp(),
         updatedBy   : getCurrentUserEmail(),
       };
@@ -455,6 +457,24 @@ const db = (() => {
     } catch (error) {
       console.error('Error guardando ítem:', error);
       notificar('No se pudo guardar el ítem de calificación.', 'error');
+      return false;
+    }
+  }
+
+  // Habilita/deshabilita un ítem para evaluación por pares (modo confidencial).
+  async function setItemEvaluablePorPares(itemId, evaluablePorPares) {
+    try {
+      if (!itemId) return false;
+      const ref = doc(getFirestore(), COLLECTIONS.items, itemId);
+      await updateDoc(ref, {
+        evaluablePorPares: Boolean(evaluablePorPares),
+        updatedAt: serverTimestamp(),
+        updatedBy: getCurrentUserEmail(),
+      });
+      return true;
+    } catch (error) {
+      console.error('Error actualizando ítem (pares):', error);
+      notificar('No se pudo actualizar el ítem.', 'error');
       return false;
     }
   }
@@ -482,7 +502,11 @@ const db = (() => {
         return false;
       }
 
-      const items = app.getItemsParaRol(empleado.rol);
+      // En modo confidencial solo se guardan los ítems habilitados para pares.
+      const peerEvaluator = obtenerEvaluadorConfidencial();
+      const items = peerEvaluator && app.getItemsParaRolPares
+        ? app.getItemsParaRolPares(empleado.rol)
+        : app.getItemsParaRol(empleado.rol);
 
       if (!items.length) {
         notificar(`No hay ítems configurados para el rol ${empleado.rol}.`, 'error');
@@ -516,7 +540,6 @@ const db = (() => {
         return false;
       }
 
-      const peerEvaluator = obtenerEvaluadorConfidencial();
       const operatorEmail = getCurrentUserEmail();
       const operatorName = getCurrentUserName();
       const evaluatorEmail = peerEvaluator ? (peerEvaluator.email || '') : operatorEmail;
@@ -606,6 +629,7 @@ const db = (() => {
     escucharTodasEvaluaciones,
     guardarEmpleado,
     guardarItem,
+    setItemEvaluablePorPares,
     guardarEvaluacion,
     obtenerHistorialEmpleado,
   };
