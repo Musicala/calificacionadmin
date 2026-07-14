@@ -1489,6 +1489,36 @@ img {
   border-bottom: none;
 }
 
+.eval-item:has(.btn-no-aplica) {
+  grid-template-columns: 1fr auto 40px auto;
+}
+
+.eval-item.no-aplica {
+  opacity: 0.68;
+}
+
+.eval-item.no-aplica .star-rating {
+  pointer-events: none;
+}
+
+.btn-no-aplica {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.btn-no-aplica[aria-pressed="true"] {
+  border-color: #64748b;
+  background: #eef2f7;
+  color: #334155;
+  font-weight: 700;
+}
+
 .eval-item-info {
   min-width: 0;
 }

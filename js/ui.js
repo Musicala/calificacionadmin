@@ -1212,7 +1212,7 @@ const ui = (() => {
     }
   }
 
-  function crearHTMLItemEvaluacion(item) {
+  function crearHTMLItemEvaluacion(item, esConfidencial = false) {
     return `
       <div class="eval-item" data-id="${escapeHtml(item.id)}">
         <div class="eval-item-info">
@@ -1231,6 +1231,9 @@ const ui = (() => {
         <div class="eval-item-val">
           <span class="val-num" id="val-${escapeHtml(item.id)}">—</span>
         </div>
+        ${esConfidencial ? `
+          <button class="btn-no-aplica" type="button" data-no-aplica-item="${escapeHtml(item.id)}" aria-pressed="false">No aplica</button>
+        ` : ''}
       </div>
     `;
   }
@@ -1256,6 +1259,10 @@ const ui = (() => {
       return;
     }
 
+    const evalItem = box.closest('.eval-item');
+    evalItem?.classList.remove('no-aplica');
+    delete evalItem?.dataset.noAplica;
+    evalItem?.querySelector('[data-no-aplica-item]')?.setAttribute('aria-pressed', 'false');
     box.dataset.value = String(num);
 
     stars.forEach((star) => {
@@ -1299,6 +1306,27 @@ const ui = (() => {
 
       box.addEventListener('mouseleave', () => {
         pintarHover(box, null);
+      });
+    });
+
+    document.querySelectorAll('#eval-items-container [data-no-aplica-item]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const item = button.closest('.eval-item');
+        const itemId = button.dataset.noAplicaItem || '';
+        if (!item || !itemId) return;
+
+        const marcado = item.dataset.noAplica === 'true';
+        if (marcado) {
+          delete item.dataset.noAplica;
+          item.classList.remove('no-aplica');
+          button.setAttribute('aria-pressed', 'false');
+        } else {
+          item.dataset.noAplica = 'true';
+          item.classList.add('no-aplica');
+          button.setAttribute('aria-pressed', 'true');
+          setValorStars(itemId, null);
+        }
+        actualizarPromedioLive();
       });
     });
   }
@@ -1358,7 +1386,8 @@ const ui = (() => {
     }
 
     // Modo confidencial (par evaluando): solo los ítems habilitados para pares.
-    const evaluadorParActivo = Boolean($('conf-evaluador')?.value);
+    const evaluadorParActivo = obtenerApp().getState?.().currentView === 'confidencial'
+      && Boolean($('conf-evaluador')?.value);
     const items = evaluadorParActivo
       ? app.getItemsParaRolPares(empleado.rol)
       : app.getItemsParaRol(empleado.rol);
@@ -1382,7 +1411,9 @@ const ui = (() => {
     setText('eval-form-periodo', app.getPeriodoLabel(periodo));
 
     if (itemsContainer) {
-      itemsContainer.innerHTML = items.map(crearHTMLItemEvaluacion).join('');
+      itemsContainer.innerHTML = items
+        .map((item) => crearHTMLItemEvaluacion(item, evaluadorParActivo))
+        .join('');
     }
 
     bindStarRatings();

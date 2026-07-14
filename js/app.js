@@ -566,6 +566,10 @@ const app = (() => {
 
     const evalsPeriodo = Object.values(state.evaluaciones)
       .filter((ev) => ev && ev.periodo === periodo);
+    // Los registros confidenciales con todos los ítems en "No aplica" cuentan
+    // como realizados, pero no deben convertirse en un puntaje cero.
+    const evalsPeriodoConPromedio = evalsPeriodo
+      .filter((ev) => _toNumber(ev.promedio) != null);
 
     const historicasFuente = state.evaluacionesHistoricas.length
       ? state.evaluacionesHistoricas
@@ -592,8 +596,8 @@ const app = (() => {
       ? Math.round((evaluadosActivosIds.size / empleadosActivos.length) * 100)
       : 0;
 
-    const bajos = evalsPeriodo
-      .filter((ev) => (_toNumber(ev.promedio) || 0) < 3)
+    const bajos = evalsPeriodoConPromedio
+      .filter((ev) => _toNumber(ev.promedio) < 3)
       .sort((a, b) => (_toNumber(a.promedio) || 0) - (_toNumber(b.promedio) || 0));
 
     const pendientes = empleadosActivos
@@ -634,7 +638,9 @@ const app = (() => {
       })
       .sort((a, b) => (_toNumber(b.promedio) || 0) - (_toNumber(a.promedio) || 0));
 
-    const evaluadoresResumen = [...evaluacionesPeriodoDetalle.reduce((map, ev) => {
+    const evaluadoresResumen = [...evaluacionesPeriodoDetalle
+      .filter((ev) => _toNumber(ev.promedio) != null)
+      .reduce((map, ev) => {
       const actual = map.get(ev.evaluatorKey) || { id: ev.evaluatorKey, nombre: ev.evaluatorLabel, evaluaciones: 0, suma: 0 };
       actual.evaluaciones += 1;
       actual.suma += _toNumber(ev.promedio) || 0;
@@ -734,13 +740,13 @@ const app = (() => {
       });
 
     const distribucion = {
-      excelente: evalsPeriodo.filter((ev) => (_toNumber(ev.promedio) || 0) >= 4.5).length,
-      bueno: evalsPeriodo.filter((ev) => {
-        const p = _toNumber(ev.promedio) || 0;
+      excelente: evalsPeriodoConPromedio.filter((ev) => _toNumber(ev.promedio) >= 4.5).length,
+      bueno: evalsPeriodoConPromedio.filter((ev) => {
+        const p = _toNumber(ev.promedio);
         return p >= 3.8 && p < 4.5;
       }).length,
-      estable: evalsPeriodo.filter((ev) => {
-        const p = _toNumber(ev.promedio) || 0;
+      estable: evalsPeriodoConPromedio.filter((ev) => {
+        const p = _toNumber(ev.promedio);
         return p >= 3 && p < 3.8;
       }).length,
       alerta: bajos.length,

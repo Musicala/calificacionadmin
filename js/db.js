@@ -219,6 +219,12 @@ const db = (() => {
     return null;
   }
 
+  function itemMarcadoNoAplica(itemId) {
+    if (!itemId) return false;
+    const safeId = String(itemId).replace(/"/g, '\\"');
+    return document.querySelector(`.eval-item[data-id="${safeId}"]`)?.dataset.noAplica === 'true';
+  }
+
   function calcularPromedioDesdeCalificaciones(calificaciones) {
     const valores = Object.values(calificaciones)
       .map(v => Number(v))
@@ -503,7 +509,9 @@ const db = (() => {
       }
 
       // En modo confidencial solo se guardan los ítems habilitados para pares.
-      const peerEvaluator = obtenerEvaluadorConfidencial();
+      const peerEvaluator = window.app?.getState?.().currentView === 'confidencial'
+        ? obtenerEvaluadorConfidencial()
+        : null;
       const items = peerEvaluator && app.getItemsParaRolPares
         ? app.getItemsParaRolPares(empleado.rol)
         : app.getItemsParaRol(empleado.rol);
@@ -514,10 +522,17 @@ const db = (() => {
       }
 
       const calificaciones = {};
+      const noAplicaItems = [];
       const faltantes = [];
 
       items.forEach((item) => {
         const valor = leerCalificacionItem(item.id);
+
+        // "No aplica" solo se ofrece en modo confidencial y no altera el promedio.
+        if (peerEvaluator && itemMarcadoNoAplica(item.id)) {
+          noAplicaItems.push(item.id);
+          return;
+        }
 
         if (valor == null) {
           faltantes.push(item.nombre || item.id);
@@ -534,11 +549,6 @@ const db = (() => {
       }
 
       const promedio = calcularPromedioDesdeCalificaciones(calificaciones);
-
-      if (promedio == null) {
-        notificar('No fue posible calcular el promedio.', 'error');
-        return false;
-      }
 
       const operatorEmail = getCurrentUserEmail();
       const operatorName = getCurrentUserName();
@@ -567,6 +577,7 @@ const db = (() => {
         peerEvaluatorName: peerEvaluator?.nombre || '',
         peerEvaluatorRol : peerEvaluator?.rol || '',
         calificaciones,
+        noAplicaItems,
         observaciones,
         promedio,
         totalItems      : Object.keys(calificaciones).length,
