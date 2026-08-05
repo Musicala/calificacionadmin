@@ -1104,29 +1104,91 @@ const ui = (() => {
     toast(`Asignado: ${elegido.nombre || 'miembro del equipo'}.`);
   }
 
+  const CLAVE_CONFIDENCIAL = '1320';
+
+  // Captura Esc a nivel de teclado (Chrome/Edge sobre HTTPS) para que no
+  // saque de pantalla completa. Requiere estar ya en fullscreen.
+  async function bloquearTeclasSalida() {
+    try {
+      await navigator.keyboard?.lock?.(['Escape', 'F11']);
+    } catch (error) {
+      console.warn('No se pudo bloquear el teclado:', error);
+    }
+  }
+
+  function liberarTeclasSalida() {
+    try {
+      navigator.keyboard?.unlock?.();
+    } catch (error) {
+      console.warn('No se pudo liberar el teclado:', error);
+    }
+  }
+
+  async function entrarPantallaCompleta() {
+    if (document.fullscreenElement || !document.documentElement.requestFullscreen) return;
+    await document.documentElement.requestFullscreen();
+  }
+
+  function mostrarCandadoConfidencial() {
+    $('conf-lock-overlay')?.classList.remove('hidden');
+    document.body.classList.add('confidential-locked');
+  }
+
+  function ocultarCandadoConfidencial() {
+    $('conf-lock-overlay')?.classList.add('hidden');
+    document.body.classList.remove('confidential-locked');
+  }
+
+  // Respaldo para navegadores sin Keyboard Lock: si se pierde la pantalla
+  // completa, la app queda tapada hasta volver a entrar o poner la clave.
+  async function onFullscreenChangeConfidencial() {
+    if (!state.confidentialKioskActive) return;
+
+    if (document.fullscreenElement) {
+      ocultarCandadoConfidencial();
+      await bloquearTeclasSalida();
+      return;
+    }
+
+    mostrarCandadoConfidencial();
+  }
+
+  async function volverAPantallaCompletaConfidencial() {
+    try {
+      await entrarPantallaCompleta();
+      ocultarCandadoConfidencial();
+      await bloquearTeclasSalida();
+    } catch (error) {
+      console.warn('No se pudo volver a pantalla completa:', error);
+      toast('El navegador no permitio pantalla completa. Usa F11.', 'error');
+    }
+  }
+
   async function activarModoConfidencialSeguro() {
     state.confidentialKioskActive = true;
     document.body.classList.add('confidential-kiosk');
     $('btn-conf-activar-modo')?.classList.add('hidden');
     $('btn-conf-salir-modo')?.classList.remove('hidden');
 
+    document.addEventListener('keydown', bloquearEscapeConfidencial, true);
+    document.addEventListener('fullscreenchange', onFullscreenChangeConfidencial);
+
     try {
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen();
-      }
+      await entrarPantallaCompleta();
     } catch (error) {
       console.warn('No se pudo activar pantalla completa:', error);
       toast('Modo confidencial activo. Si el navegador no permite pantalla completa, usa F11.', 'info');
       return;
     }
 
-    toast('Modo confidencial activo.');
+    await bloquearTeclasSalida();
+    toast('Modo confidencial activo. Solo se sale con clave.');
   }
 
   async function salirModoConfidencialSeguro() {
     const clave = window.prompt('Clave para salir del modo confidencial');
 
-    if (clave !== '1320') {
+    if (clave !== CLAVE_CONFIDENCIAL) {
       toast('Clave incorrecta.', 'error');
       return;
     }
@@ -1134,7 +1196,10 @@ const ui = (() => {
     state.confidentialKioskActive = false;
     document.body.classList.remove('confidential-kiosk', 'confidential-thanks');
     $('conf-gracias-overlay')?.classList.add('hidden');
+    ocultarCandadoConfidencial();
     document.removeEventListener('keydown', bloquearEscapeConfidencial, true);
+    document.removeEventListener('fullscreenchange', onFullscreenChangeConfidencial);
+    liberarTeclasSalida();
     $('btn-conf-activar-modo')?.classList.remove('hidden');
     $('btn-conf-salir-modo')?.classList.add('hidden');
 
@@ -1151,7 +1216,7 @@ const ui = (() => {
   }
 
   function bloquearEscapeConfidencial(event) {
-    if (event.key === 'Escape' || event.key === 'Esc') {
+    if (event.key === 'Escape' || event.key === 'Esc' || event.key === 'F11') {
       event.preventDefault();
       event.stopPropagation();
     }
@@ -1178,16 +1243,14 @@ const ui = (() => {
     const overlay = $('conf-gracias-overlay');
     overlay?.classList.add('hidden');
     document.body.classList.remove('confidential-thanks');
-    document.removeEventListener('keydown', bloquearEscapeConfidencial, true);
+    if (!state.confidentialKioskActive) {
+      document.removeEventListener('keydown', bloquearEscapeConfidencial, true);
+    }
 
     // El modo confidencial no se cierra desde aqui: si el navegador salio de
     // pantalla completa, se vuelve a entrar aprovechando este clic del usuario.
     if (state.confidentialKioskActive && !document.fullscreenElement) {
-      try {
-        await document.documentElement.requestFullscreen?.();
-      } catch (error) {
-        console.warn('No se pudo restaurar pantalla completa:', error);
-      }
+      await volverAPantallaCompletaConfidencial();
     }
 
     limpiarModoConfidencial({ silent: true });
@@ -1730,6 +1793,7 @@ const ui = (() => {
     salirModoConfidencialSeguro,
     onEvaluacionGuardada,
     cerrarGraciasConfidencial,
+    volverAPantallaCompletaConfidencial,
     actualizarSelectEvaluacion,
     actualizarEstadoEval,
     cargarFormularioEval,

@@ -545,6 +545,21 @@
             </button>
           </div>
         </div>
+
+        <div id="conf-lock-overlay" class="conf-thanks-overlay conf-lock-overlay hidden" role="dialog" aria-modal="true">
+          <div class="conf-thanks-card">
+            <div class="conf-thanks-icon conf-lock-icon">&#128274;</div>
+            <h2>Modo confidencial activo</h2>
+            <p>La pantalla completa se desactivo. Vuelve a activarla para continuar con la evaluacion.</p>
+            <p class="conf-thanks-note">Solo se puede salir del modo confidencial con la clave.</p>
+            <button class="btn-primary btn-wide" type="button" onclick="ui.volverAPantallaCompletaConfidencial()">
+              Volver a pantalla completa
+            </button>
+            <button class="btn-secondary btn-wide" type="button" onclick="ui.salirModoConfidencialSeguro()">
+              Salir con clave
+            </button>
+          </div>
+        </div>
       </section>
 
       <section id="view-config" class="app-view">

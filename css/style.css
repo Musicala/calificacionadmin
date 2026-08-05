@@ -2947,8 +2947,27 @@ body.confidential-kiosk .confidential-lock {
 }
 
 body.confidential-thanks .sidebar,
-body.confidential-thanks .topbar {
+body.confidential-thanks .topbar,
+body.confidential-locked .sidebar,
+body.confidential-locked .topbar {
   pointer-events: none;
+}
+
+body.confidential-locked {
+  overflow: hidden;
+}
+
+.conf-lock-overlay {
+  z-index: 10000;
+  background: linear-gradient(135deg, rgba(2, 6, 23, 0.99), rgba(30, 41, 59, 0.99));
+}
+
+.conf-lock-icon {
+  background: #0f172a;
+}
+
+.conf-lock-overlay .btn-secondary {
+  margin-top: 10px;
 }
 
 @media (max-width: 900px) {
