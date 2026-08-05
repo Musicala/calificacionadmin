@@ -853,12 +853,46 @@ const ui = (() => {
     const app = obtenerApp();
     const periodo = app.getPeriodoActivo();
     const evaluadorId = $('conf-evaluador')?.value || '';
-    const evaluados = new Set(Object.values(app.getEvaluaciones?.() || {})
+
+    const candidatos = app.getEmpleados()
+      .filter((emp) => emp?.activo !== false && emp.id !== evaluadorId);
+
+    if (!evaluadorId) return candidatos;
+
+    // Ya evaluados por este evaluador en el periodo activo: siempre se excluyen.
+    const excluidos = new Set(Object.values(app.getEvaluaciones?.() || {})
       .filter((ev) => ev?.periodo === periodo && String(ev.evaluatorId || '') === evaluadorId)
       .map((ev) => ev.empleadoId));
-    const pendientes = app.getEmpleados().filter((emp) => !evaluados.has(emp.id));
 
-    return pendientes.filter((emp) => emp?.activo !== false && emp.id !== evaluadorId);
+    // Rotacion anual: tampoco repetir a quienes ya evaluo en meses anteriores,
+    // hasta que haya cubierto a todo el equipo (ahi el ciclo se reinicia).
+    const previasPorPeriodo = new Map();
+    (app.getEvaluacionesHistoricas?.() || [])
+      .filter((ev) => ev
+        && String(ev.evaluatorId || '') === evaluadorId
+        && ev.periodo
+        && String(ev.periodo) !== String(periodo))
+      .forEach((ev) => {
+        const set = previasPorPeriodo.get(String(ev.periodo)) || new Set();
+        set.add(ev.empleadoId);
+        previasPorPeriodo.set(String(ev.periodo), set);
+      });
+
+    const periodosPrevios = [...previasPorPeriodo.keys()]
+      .sort((a, b) => b.localeCompare(a)); // del mas reciente al mas antiguo
+
+    for (const p of periodosPrevios) {
+      const tentativo = new Set(excluidos);
+      previasPorPeriodo.get(p).forEach((id) => tentativo.add(id));
+
+      // Si al sumar este periodo ya no queda nadie, el ciclo esta completo:
+      // se detiene la exclusion historica y se permite volver a repetir.
+      if (candidatos.every((emp) => tentativo.has(emp.id))) break;
+
+      previasPorPeriodo.get(p).forEach((id) => excluidos.add(id));
+    }
+
+    return candidatos.filter((emp) => !excluidos.has(emp.id));
   }
 
   function actualizarSelectEvaluadorConfidencial() {
@@ -1098,7 +1132,9 @@ const ui = (() => {
     }
 
     state.confidentialKioskActive = false;
-    document.body.classList.remove('confidential-kiosk');
+    document.body.classList.remove('confidential-kiosk', 'confidential-thanks');
+    $('conf-gracias-overlay')?.classList.add('hidden');
+    document.removeEventListener('keydown', bloquearEscapeConfidencial, true);
     $('btn-conf-activar-modo')?.classList.remove('hidden');
     $('btn-conf-salir-modo')?.classList.add('hidden');
 
@@ -1114,10 +1150,55 @@ const ui = (() => {
     toast('Modo confidencial cerrado.');
   }
 
+  function bloquearEscapeConfidencial(event) {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  function mostrarGraciasConfidencial(nombreEvaluado = '') {
+    const overlay = $('conf-gracias-overlay');
+    if (!overlay) return;
+
+    setText(
+      'conf-gracias-detalle',
+      nombreEvaluado
+        ? `Tu evaluacion de ${nombreEvaluado} quedo guardada de forma confidencial.`
+        : 'Tu respuesta quedo guardada de forma confidencial.'
+    );
+
+    overlay.classList.remove('hidden');
+    document.body.classList.add('confidential-thanks');
+    document.addEventListener('keydown', bloquearEscapeConfidencial, true);
+    $('btn-conf-gracias-continuar')?.focus();
+  }
+
+  async function cerrarGraciasConfidencial() {
+    const overlay = $('conf-gracias-overlay');
+    overlay?.classList.add('hidden');
+    document.body.classList.remove('confidential-thanks');
+    document.removeEventListener('keydown', bloquearEscapeConfidencial, true);
+
+    // El modo confidencial no se cierra desde aqui: si el navegador salio de
+    // pantalla completa, se vuelve a entrar aprovechando este clic del usuario.
+    if (state.confidentialKioskActive && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen?.();
+      } catch (error) {
+        console.warn('No se pudo restaurar pantalla completa:', error);
+      }
+    }
+
+    limpiarModoConfidencial({ silent: true });
+  }
+
   function onEvaluacionGuardada() {
     if (obtenerApp().getState?.().currentView !== 'confidencial') return;
+
+    const evaluado = getEmpleadoPorId(state.confidentialEmpleadoId);
+    mostrarGraciasConfidencial(evaluado?.nombre || '');
     limpiarModoConfidencial({ silent: true });
-    toast('Evaluacion guardada. Pantalla limpia para la siguiente persona.');
   }
 
   function prepararVistaEvaluacion() {
@@ -1648,6 +1729,7 @@ const ui = (() => {
     activarModoConfidencialSeguro,
     salirModoConfidencialSeguro,
     onEvaluacionGuardada,
+    cerrarGraciasConfidencial,
     actualizarSelectEvaluacion,
     actualizarEstadoEval,
     cargarFormularioEval,

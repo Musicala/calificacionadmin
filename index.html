@@ -516,7 +516,7 @@
                 </button>
 
                 <p class="form-hint">
-                  No se repite una persona que este evaluador ya haya calificado en el periodo seleccionado.
+                  La ruleta no repite personas que este evaluador ya califico en meses anteriores, hasta completar a todo el equipo.
                 </p>
               </div>
             </div>
@@ -531,6 +531,18 @@
                 <div id="confidential-form-mount"></div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <div id="conf-gracias-overlay" class="conf-thanks-overlay hidden" role="dialog" aria-modal="true" aria-live="polite">
+          <div class="conf-thanks-card">
+            <div class="conf-thanks-icon">&#10003;</div>
+            <h2>Gracias por tu evaluacion</h2>
+            <p id="conf-gracias-detalle">Tu respuesta quedo guardada de forma confidencial.</p>
+            <p class="conf-thanks-note">Nadie mas vera lo que respondiste. La pantalla sigue en modo confidencial.</p>
+            <button id="btn-conf-gracias-continuar" class="btn-primary btn-wide" type="button" onclick="ui.cerrarGraciasConfidencial()">
+              Continuar
+            </button>
           </div>
         </div>
       </section>

@@ -2888,6 +2888,69 @@ body.confidential-kiosk .confidential-lock {
   display: none;
 }
 
+/* ── Overlay de agradecimiento (modo confidencial) ── */
+.conf-thanks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.97));
+  backdrop-filter: blur(6px);
+}
+
+.conf-thanks-overlay.hidden {
+  display: none;
+}
+
+.conf-thanks-card {
+  width: min(520px, 100%);
+  padding: 40px 32px;
+  border-radius: 20px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.conf-thanks-icon {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  color: #fff;
+  background: #16a34a;
+}
+
+.conf-thanks-card h2 {
+  margin-bottom: 10px;
+  font-size: 26px;
+}
+
+.conf-thanks-card p {
+  margin-bottom: 8px;
+  color: #475569;
+}
+
+.conf-thanks-note {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.conf-thanks-card button {
+  margin-top: 22px;
+}
+
+body.confidential-thanks .sidebar,
+body.confidential-thanks .topbar {
+  pointer-events: none;
+}
+
 @media (max-width: 900px) {
   .confidential-hero {
     align-items: flex-start;
