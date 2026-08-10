@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&family=Sacramento&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=20260810.2" />
 </head>
 <body>
 
@@ -856,7 +856,9 @@
       const firebaseModule = await import('./js/firebase-config.js');
       const authModule = (await import('./js/auth.js')).default;
       const dbModule = (await import('./js/db.js')).default;
-      const uiModule = (await import('./js/ui.js')).default;
+      // Cambiar esta versión en cada ajuste visible evita que una PWA o el
+      // navegador reutilice una interfaz anterior desde su caché.
+      const uiModule = (await import('./js/ui.js?v=20260810.2')).default;
       const appModule = (await import('./js/app.js')).default;
 
       const firebaseExports = firebaseModule.default ?? firebaseModule;
