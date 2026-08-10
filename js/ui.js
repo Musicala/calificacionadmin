@@ -1631,6 +1631,7 @@ const ui = (() => {
     setText('historial-tendencia', '—');
 
     const tbody = $('historial-tbody');
+    const evolucionCriterios = $('historial-evolucion-criterios');
     const itemsResumen = $('historial-items-resumen');
     if (tbody) {
       tbody.innerHTML = `
@@ -1639,6 +1640,7 @@ const ui = (() => {
         </tr>
       `;
     }
+    if (evolucionCriterios) evolucionCriterios.innerHTML = '';
     if (itemsResumen) itemsResumen.innerHTML = '';
 
     abrirModal('modal-historial');
@@ -1654,6 +1656,7 @@ const ui = (() => {
         </tr>
       `;
       if (itemsResumen) itemsResumen.innerHTML = '';
+      if (evolucionCriterios) evolucionCriterios.innerHTML = '';
       return;
     }
 
@@ -1725,6 +1728,74 @@ const ui = (() => {
         `;
       })
       .join('');
+
+    // Agrupamos cada criterio por período: así, si hubo más de una evaluación
+    // en un mismo mes, se muestra un único valor representativo para comparar.
+    if (evolucionCriterios) {
+      const criterios = new Map();
+      historialAsc.forEach((h) => {
+        Object.entries(h.calificaciones || {}).forEach(([itemId, valor]) => {
+          const puntaje = toNumber(valor);
+          if (puntaje == null) return;
+          const criterio = criterios.get(itemId) || { id: itemId, periodos: new Map() };
+          const valoresPeriodo = criterio.periodos.get(h.periodo) || [];
+          valoresPeriodo.push(puntaje);
+          criterio.periodos.set(h.periodo, valoresPeriodo);
+          criterios.set(itemId, criterio);
+        });
+      });
+
+      const tarjetas = [...criterios.values()]
+        .map((criterio) => {
+          const puntos = [...criterio.periodos.entries()]
+            .sort(([a], [b]) => String(a).localeCompare(String(b)))
+            .map(([periodo, valoresPeriodo]) => ({
+              periodo,
+              promedio: valoresPeriodo.reduce((suma, valor) => suma + valor, 0) / valoresPeriodo.length,
+            }));
+          const ultimo = puntos.at(-1);
+          const anterior = puntos.at(-2);
+          const cambio = anterior ? Number((ultimo.promedio - anterior.promedio).toFixed(1)) : null;
+          const estado = cambio == null ? 'Sin comparación aún'
+            : Math.abs(cambio) < 0.1 ? 'Se mantuvo estable'
+              : cambio > 0 ? `Subió ${formatoNumero(cambio)}` : `Bajó ${formatoNumero(Math.abs(cambio))}`;
+          const clase = cambio == null ? 'trend-flat' : cambio > 0 ? 'trend-up' : cambio < 0 ? 'trend-down' : 'trend-flat';
+          const item = getItemPorId(criterio.id);
+          return {
+            nombre: item?.nombre || criterio.id,
+            puntos,
+            ultimo,
+            estado,
+            clase,
+          };
+        })
+        .sort((a, b) => String(a.nombre).localeCompare(String(b.nombre), 'es', { sensitivity: 'base' }));
+
+      evolucionCriterios.innerHTML = tarjetas.length ? `
+        <div class="historial-items-title">Evolución detallada por criterio</div>
+        <p class="historial-evolucion-copy">Compara cada período disponible para identificar con precisión qué mejoró, se mantuvo o bajó.</p>
+        <div class="criterios-evolucion-grid">
+          ${tarjetas.map((tarjeta) => `
+            <article class="criterio-evolucion-card">
+              <div class="criterio-evolucion-head">
+                <strong>${escapeHtml(tarjeta.nombre)}</strong>
+                <span class="criterio-evolucion-status ${tarjeta.clase}">${escapeHtml(tarjeta.estado)}</span>
+              </div>
+              <div class="criterio-evolucion-puntos">
+                ${tarjeta.puntos.map((punto) => `
+                  <div class="criterio-periodo" title="${escapeHtml(app.getPeriodoLabel(punto.periodo))}: ${escapeHtml(formatoNumero(punto.promedio))}">
+                    <div class="criterio-bar-track"><span style="height:${porcentajeDesdeScore(punto.promedio)}%"></span></div>
+                    <strong>${escapeHtml(formatoNumero(punto.promedio))}</strong>
+                    <small>${escapeHtml(app.getPeriodoLabel(punto.periodo))}</small>
+                  </div>
+                `).join('')}
+              </div>
+              <div class="criterio-evolucion-footer">Último registro: <strong>${escapeHtml(formatoNumero(tarjeta.ultimo.promedio))}</strong> · ${escapeHtml(app.getPeriodoLabel(tarjeta.ultimo.periodo))}</div>
+            </article>
+          `).join('')}
+        </div>
+      ` : '';
+    }
 
     if (itemsResumen) {
       const itemTotals = {};
